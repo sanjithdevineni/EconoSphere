@@ -51,14 +51,14 @@ def create_layout():
                 dbc.Card([
                     dbc.CardHeader(html.H4("Policy Controls")),
                     dbc.CardBody([
-                        # Tax Rate
-                        html.Label("Tax Rate (%)", className="fw-bold"),
+                        # Tax Rate (VAT)
+                        html.Label("VAT Rate (%)", className="fw-bold"),
                         dcc.Slider(
                             id='tax-rate-slider',
                             min=0,
                             max=50,
                             step=1,
-                            value=config.INITIAL_TAX_RATE * 100,
+                            value=config.INITIAL_VAT_RATE * 100,
                             marks={i: f'{i}%' for i in range(0, 51, 10)},
                             tooltip={"placement": "bottom", "always_visible": True}
                         ),
