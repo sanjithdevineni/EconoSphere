@@ -1,6 +1,6 @@
-# MacroEcon Simulator
+# EconoSphere
 
-An agent-based economic simulation with real-time visualization and policy sandbox capabilities.
+An agent-based economic simulation with autonomous agents (consumers, firms, policies) to test economic outcomes and business strategies.
 
 ## Features
 
