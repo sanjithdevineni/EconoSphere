@@ -31,6 +31,7 @@ RESERVE_RATIO = 0.10  # 10%
 INITIAL_WAGE = 1000
 INITIAL_PRICE_LEVEL = 10
 CONSUMER_PROPENSITY_TO_CONSUME = 0.7  # Marginal propensity to consume (MPC)
+CONSUMER_WEALTH_SPEND_RATE = 0.03  # Share of wealth households are willing to draw down per step
 
 # Firm Production Parameters
 FIRM_PRODUCTIVITY = 2.0  # Total factor productivity (TFP)
@@ -40,8 +41,10 @@ FIRM_INVESTMENT_SHARE = 0.1  # Share of profit invested (xi)
 FIRM_PRODUCTIVITY_GROWTH_COEFF = 0.1  # Productivity growth coefficient (kappa)
 
 # Price Adjustment Parameters
-PRICE_DEMAND_SENSITIVITY = 0.05  # theta_d: sensitivity to excess demand (0.05-0.2 typical)
+PRICE_DEMAND_SENSITIVITY = 0.02  # theta_d: sensitivity to excess demand (kept low for stability)
 PRICE_COST_SENSITIVITY = 0.05  # theta_c: sensitivity to cost changes (0.05-0.2 typical)
+MAX_EXCESS_DEMAND_RATIO = 1.5  # Cap on demand vs supply used in pricing
+MAX_PRICE_ADJUSTMENT = 0.03  # Maximum fractional price change per step
 
 # Wage Adjustment Parameters
 WAGE_ADJUSTMENT_SPEED = 0.05  # eta: wage response to labor shortage (0.05-0.15 typical)

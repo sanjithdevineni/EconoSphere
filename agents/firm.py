@@ -51,7 +51,7 @@ class Firm(Agent):
         target_output = max(expected_demand, 1)
 
         # Approximate linear labor demand then apply diminishing returns
-        desired_labor = (target_output / productive_capacity) ** self.gamma
+        desired_labor = (target_output / productive_capacity) ** (1.0 / max(self.gamma, 0.01))
 
         # Penalize hiring when borrowing is expensive
         interest_penalty = max(0.4, 1 - interest_rate * 5)
@@ -120,9 +120,10 @@ class Firm(Agent):
         # Calculate excess demand ratio
         if market_supply > 0:
             excess_demand_ratio = (market_demand - market_supply) / max(market_supply, 1)
+            max_ratio = getattr(config, 'MAX_EXCESS_DEMAND_RATIO', 1.0)
+            excess_demand_ratio = max(-max_ratio, min(excess_demand_ratio, max_ratio))
         else:
             excess_demand_ratio = 0
-        excess_demand_ratio = max(-1, min(1, excess_demand_ratio))
 
         # Calculate unit cost (wage per unit of output)
         if self.production > 0:
@@ -143,7 +144,8 @@ class Firm(Agent):
 
         # Update price using continuous adjustment with damping to avoid instability
         price_adjustment = theta_d * excess_demand_ratio + theta_c * unit_cost_change
-        price_adjustment = max(-0.05, min(0.05, price_adjustment))
+        max_move = getattr(config, 'MAX_PRICE_ADJUSTMENT', 0.05)
+        price_adjustment = max(-max_move, min(max_move, price_adjustment))
         self.price = self.price * (1 + price_adjustment)
 
         # Floor price to avoid negative or too low

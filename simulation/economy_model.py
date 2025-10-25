@@ -160,13 +160,17 @@ class EconomyModel(Model):
         # 2. Clear labor market
         labor_results = self.labor_market.clear_market(self.consumers, self.firms)
 
-        # 3. Government fiscal policy
-        self.government.collect_taxes(self.consumers, self.firms)
+        # 3. Government fiscal support (welfare before consumption)
         self.government.distribute_welfare(self.consumers)
 
         # 4. Clear goods market (consumers demand goods, firms sell, prices adjust)
         govt_demand = self.government.government_spending_stimulus(self)
         market_results = self.goods_market.clear_market(self.consumers, self.firms, govt_demand)
+
+        consumer_purchases = market_results.get('consumer_purchases', {})
+        for consumer in self.consumers:
+            purchase = consumer_purchases.get(consumer.unique_id, {'spending': 0.0, 'quantity': 0.0})
+            consumer.finalize_consumption(purchase['spending'], purchase['quantity'])
 
         # 5. Firms pay wages and calculate profits
         for firm in self.firms:
@@ -177,6 +181,9 @@ class EconomyModel(Model):
                 xi=config.FIRM_INVESTMENT_SHARE,
                 kappa=config.FIRM_PRODUCTIVITY_GROWTH_COEFF
             )
+
+        # 6. Government tax collection (after wages and consumption are realised)
+        self.government.collect_taxes(self.consumers, self.firms)
 
         # 7. Adjust wages based on firm-level labor shortages
         self.labor_market.adjust_wages(
