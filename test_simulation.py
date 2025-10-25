@@ -16,9 +16,9 @@ def test_basic_simulation():
     # Create model
     print("\n1. Creating economy model...")
     model = EconomyModel()
-    print(f"   ✓ Created {config.NUM_CONSUMERS} consumers")
-    print(f"   ✓ Created {config.NUM_FIRMS} firms")
-    print(f"   ✓ Created government and central bank")
+    print(f"   [OK] Created {config.NUM_CONSUMERS} consumers")
+    print(f"   [OK] Created {config.NUM_FIRMS} firms")
+    print(f"   [OK] Created government and central bank")
 
     # Run simulation for a few steps
     print("\n2. Running simulation for 10 steps...")
@@ -32,11 +32,11 @@ def test_basic_simulation():
 
     # Test tax change
     model.set_tax_rate(0.30)
-    print("   ✓ Increased tax rate to 30%")
+    print("   [OK] Increased VAT rate to 30%")
 
     # Test interest rate change
     model.set_interest_rate(0.08)
-    print("   ✓ Increased interest rate to 8%")
+    print("   [OK] Increased interest rate to 8%")
 
     # Run a few more steps
     print("\n4. Running 5 more steps with new policies...")
@@ -47,14 +47,14 @@ def test_basic_simulation():
 
     print("\n5. Testing crisis scenario...")
     model.trigger_crisis('recession')
-    print("   ✓ Triggered recession")
+    print("   [OK] Triggered recession")
 
     metrics = model.step()
     print(f"   After crisis: Unemployment={metrics['unemployment']:.1f}%, "
           f"Interest Rate={metrics['interest_rate']:.2f}%")
 
     print("\n" + "=" * 60)
-    print("All tests passed! ✓")
+    print("All tests passed! [OK]")
     print("You can now run: python main.py")
     print("=" * 60)
 

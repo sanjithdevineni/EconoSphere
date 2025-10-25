@@ -149,10 +149,14 @@ class EconomyModel(Model):
         """
 
         # 1. Firms determine labor demand
+        # Divide total market demand across firms
+        total_expected_demand = self.goods_market.total_demand if self.goods_market.total_demand > 0 else 100
+        num_firms = len(self.firms) if self.firms else 1
+
         for firm in self.firms:
-            # Estimate demand based on previous period
-            expected_demand = self.goods_market.total_demand if self.goods_market.total_demand > 0 else 100
-            firm.determine_labor_demand(expected_demand)
+            # Each firm expects a share of total demand
+            expected_demand_per_firm = total_expected_demand / num_firms
+            firm.determine_labor_demand(expected_demand_per_firm)
 
         # 2. Clear labor market
         labor_results = self.labor_market.clear_market(self.consumers, self.firms)

@@ -194,8 +194,8 @@ class Firm(Agent):
         """
         Firm's decision-making in each time step
         """
-        # Reset per-step variables
+        # Reset per-step flow variables (not stock variables like production/inventory)
         self.revenue = 0
         self.costs = 0
         self.profit = 0
-        self.production = 0
+        # Note: production and inventory are NOT reset - they persist until next produce() call

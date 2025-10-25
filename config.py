@@ -40,8 +40,11 @@ FIRM_INVESTMENT_SHARE = 0.1  # Share of profit invested (xi)
 FIRM_PRODUCTIVITY_GROWTH_COEFF = 0.1  # Productivity growth coefficient (kappa)
 
 # Price Adjustment Parameters
-PRICE_DEMAND_SENSITIVITY = 0.1  # theta_d: sensitivity to excess demand
-PRICE_COST_SENSITIVITY = 0.1  # theta_c: sensitivity to cost changes
+PRICE_DEMAND_SENSITIVITY = 0.05  # theta_d: sensitivity to excess demand (0.05-0.2 typical)
+PRICE_COST_SENSITIVITY = 0.05  # theta_c: sensitivity to cost changes (0.05-0.2 typical)
+
+# Wage Adjustment Parameters
+WAGE_ADJUSTMENT_SPEED = 0.05  # eta: wage response to labor shortage (0.05-0.15 typical)
 
 # Dashboard Settings
 UPDATE_INTERVAL = 1000  # milliseconds

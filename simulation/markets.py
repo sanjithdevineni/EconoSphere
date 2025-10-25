@@ -64,7 +64,7 @@ class LaborMarket:
             'market_wage': self.market_wage
         }
 
-    def adjust_wages(self, firms, eta=0.10):
+    def adjust_wages(self, firms, eta=None):
         """
         Firms adjust wages based on their own labor shortage
 
@@ -76,6 +76,11 @@ class LaborMarket:
 
         If a firm can't fill all its vacancies, it raises wages to attract workers.
         """
+        # Use config value if not provided
+        if eta is None:
+            import config
+            eta = config.WAGE_ADJUSTMENT_SPEED
+
         for firm in firms:
             # Calculate labor shortage
             vacancies = firm.labor_demand
@@ -153,17 +158,7 @@ class GoodsMarket:
         # Collect total supply
         self.collect_supply(firms)
 
-        # 2. Firms update their prices based on market conditions
-        import config
-        for firm in firms:
-            firm.set_price(
-                self.total_demand if self.total_demand > 0 else 100,
-                self.total_supply,
-                theta_d=config.PRICE_DEMAND_SENSITIVITY,
-                theta_c=config.PRICE_COST_SENSITIVITY
-            )
-
-        # 3. Collect demand with firm-level prices
+        # 2. Collect demand with firm-level prices (from previous period)
         firm_demands = self.collect_demand(consumers, firms)
 
         # Add government spending (allocated proportionally by firm output)
@@ -176,7 +171,7 @@ class GoodsMarket:
                     firm_share = firm.production / self.total_supply
                     firm_demands[firm.unique_id] += govt_quantity * firm_share
 
-        # 4. Firms sell goods (short-side rule at firm level)
+        # 3. Firms sell goods (short-side rule at firm level)
         total_sales_value = 0
         total_sales_quantity = 0
 
@@ -185,6 +180,18 @@ class GoodsMarket:
             actual_sold = firm.sell_goods(demand_for_firm)
             total_sales_value += actual_sold * firm.price
             total_sales_quantity += actual_sold
+
+        # 4. Firms adjust prices based on their own demand vs supply
+        import config
+        for firm in firms:
+            demand_for_firm = firm_demands.get(firm.unique_id, 0)
+            supply_from_firm = firm.production
+            firm.set_price(
+                demand_for_firm,
+                supply_from_firm,
+                theta_d=config.PRICE_DEMAND_SENSITIVITY,
+                theta_c=config.PRICE_COST_SENSITIVITY
+            )
 
         # 5. Compute CPI as weighted average of firm prices
         if firms:
