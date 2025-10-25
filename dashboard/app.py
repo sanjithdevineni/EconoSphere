@@ -2,6 +2,7 @@
 Main Dash application for real-time economic simulation visualization
 """
 
+import logging
 import dash
 from dash import dcc, html, Input, Output, State
 import plotly.graph_objs as go
@@ -9,6 +10,8 @@ import dash_bootstrap_components as dbc
 
 from simulation.economy_model import EconomyModel
 import config
+
+LOGGER = logging.getLogger(__name__)
 
 
 # Global simulation instance
@@ -154,6 +157,24 @@ def create_layout():
             ])
         ]),
 
+        # AI Narrative Section
+        dbc.Row([
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader([
+                        html.H4("📰 Economic News Feed", style={'display': 'inline-block'}),
+                        html.Span(id='narrative-counter', style={'marginLeft': '20px', 'fontSize': '14px', 'color': '#666'})
+                    ]),
+                    dbc.CardBody([
+                        html.Div(id='ai-narrative', style={'minHeight': '100px'}, children=[
+                            html.P("AI narratives will appear here when you trigger a recession or inflation crisis.",
+                                   style={'fontSize': '15px', 'color': '#666', 'fontStyle': 'italic', 'textAlign': 'center', 'padding': '20px'})
+                        ])
+                    ])
+                ], className="mt-3")
+            ])
+        ]),
+
         # Hidden components for state management
         dcc.Interval(
             id='interval-component',
@@ -224,6 +245,8 @@ def register_callbacks(app):
         Output('inflation-chart', 'figure'),
         Output('inequality-chart', 'figure'),
         Output('current-metrics', 'children'),
+        Output('ai-narrative', 'children'),
+        Output('narrative-counter', 'children'),
         Input('interval-component', 'n_intervals'),
         Input('tax-rate-slider', 'value'),
         Input('interest-rate-slider', 'value'),
@@ -248,8 +271,9 @@ def register_callbacks(app):
         simulation.enable_auto_monetary_policy(len(auto_policy) > 0)
 
         # Run one step if simulation is running
+        current_metrics = None
         if state.get('running', False):
-            simulation.step()
+            current_metrics = simulation.step()
 
         # Get history
         history = simulation.metrics.get_history()
@@ -293,7 +317,65 @@ def register_callbacks(app):
             ], width=3),
         ])
 
-        return gdp_fig, unemployment_fig, inflation_fig, inequality_fig, metrics_display
+        # AI Narrative display - get narrative history
+        narrative_history = []
+
+        LOGGER.info(f"Checking narrative sources: current_metrics={current_metrics is not None}, current={current is not None}, simulation={simulation is not None}")
+
+        if current_metrics and 'narrative_history' in current_metrics:
+            narrative_history = current_metrics['narrative_history']
+            LOGGER.info(f"Found {len(narrative_history)} narratives in current_metrics")
+        elif current and 'narrative_history' in current:
+            narrative_history = current['narrative_history']
+            LOGGER.info(f"Found {len(narrative_history)} narratives in current state")
+        elif simulation and hasattr(simulation, 'narrative_history'):
+            narrative_history = simulation.narrative_history
+            LOGGER.info(f"Found {len(narrative_history)} narratives directly from simulation.narrative_history")
+        else:
+            LOGGER.warning(f"NO narrative_history found anywhere! current_metrics keys: {current_metrics.keys() if current_metrics else 'None'}, current keys: {current.keys() if current else 'None'}, simulation has attr: {hasattr(simulation, 'narrative_history') if simulation else 'None'}")
+
+        if narrative_history and len(narrative_history) > 0:
+            # Build list of narrative cards (newest first)
+            narrative_cards = []
+            for item in narrative_history:
+                narrative_cards.append(
+                    html.Div([
+                        html.Div([
+                            html.Strong(f"Step {item['step']}", style={'fontSize': '14px', 'color': '#0066cc'}),
+                            html.Span(f" | {simulation.current_step - item['step']} steps ago",
+                                     style={'fontSize': '12px', 'color': '#666', 'marginLeft': '10px'})
+                        ], style={'marginBottom': '8px'}),
+                        html.P(item['text'], style={'fontSize': '15px', 'lineHeight': '1.5', 'color': '#000', 'margin': '0'}),
+                    ], style={
+                        'padding': '15px',
+                        'marginBottom': '10px',
+                        'backgroundColor': '#ffffff',
+                        'border': '1px solid #ddd',
+                        'borderRadius': '5px',
+                        'boxShadow': '0 2px 4px rgba(0,0,0,0.1)'
+                    })
+                )
+
+            narrative_display = html.Div([
+                html.Div([
+                    html.Strong(f"{len(narrative_history)} Economic News Update(s)",
+                               style={'fontSize': '16px', 'color': '#333'}),
+                ], style={'marginBottom': '15px', 'paddingBottom': '10px', 'borderBottom': '2px solid #0066cc'}),
+                html.Div(narrative_cards)
+            ], style={'padding': '10px'})
+            LOGGER.info(f"Returning narrative_display with {len(narrative_history)} items")
+        else:
+            narrative_display = html.Div([
+                html.P("AI narratives will appear here when you trigger a recession or inflation crisis.",
+                       style={'fontSize': '15px', 'color': '#666', 'fontStyle': 'italic'})
+            ], style={'padding': '20px', 'textAlign': 'center'})
+            LOGGER.info("Returning default narrative_display (no narratives)")
+
+        # Add a counter to prove dynamic updates work
+        counter_text = f"(Callback #{n} | Step {simulation.current_step} | History: {len(narrative_history)} items)"
+
+        LOGGER.info(f"Callback returning: narrative_display type={type(narrative_display)}, counter={counter_text}")
+        return gdp_fig, unemployment_fig, inflation_fig, inequality_fig, metrics_display, narrative_display, counter_text
 
 
 if __name__ == '__main__':
