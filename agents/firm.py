@@ -62,7 +62,7 @@ class Firm(Agent):
             inventory_factor = max(0.4, inventory_ratio)
         else:
             shortage = target_output - self.inventory
-            inventory_factor = 1 + min(0.3, shortage / max(target_output, 1))
+            inventory_factor = 1 + min(0.5, shortage / max(target_output, 1))
 
         baseline_wage = config.INITIAL_WAGE
         wage_factor = baseline_wage / max(self.wage_offered, 1)
@@ -70,8 +70,18 @@ class Firm(Agent):
 
         adjusted_labor = desired_labor * interest_penalty * inventory_factor * wage_factor
         avg_workforce_share = len(self.model.consumers) / max(1, len(self.model.firms))
-        max_workers = max(1, int(avg_workforce_share * 2))
-        self.labor_demand = max(1, min(max_workers, int(round(adjusted_labor))))
+        max_workers = max(1, int(avg_workforce_share * 1.7))
+
+        current_employees = len(self.employees)
+        baseline = max(current_employees, self.labor_demand or 0, int(avg_workforce_share))
+        max_rate = getattr(config, 'LABOR_ADJUSTMENT_RATE', 0.25)
+        max_increase = max(1, int(round(baseline * (1 + max_rate))))
+        min_decrease = max(1, int(round(baseline * (1 - max_rate))))
+
+        target = int(round(adjusted_labor))
+        target = max(min_decrease, min(max_increase, target))
+        target = max(1, min(max_workers, target))
+        self.labor_demand = target
 
         return self.labor_demand
 
@@ -120,9 +130,13 @@ class Firm(Agent):
         # Calculate excess demand ratio
         if market_supply > 0:
             excess_demand_ratio = (market_demand - market_supply) / max(market_supply, 1)
+            max_ratio = getattr(config, 'MAX_EXCESS_DEMAND_RATIO', 1.0)
+            excess_demand_ratio = max(-max_ratio, min(excess_demand_ratio, max_ratio))
+            tol = getattr(config, 'DEMAND_BALANCE_TOLERANCE', 0.05)
+            if abs(excess_demand_ratio) < tol:
+                excess_demand_ratio = 0
         else:
             excess_demand_ratio = 0
-        excess_demand_ratio = max(-1, min(1, excess_demand_ratio))
 
         # Calculate unit cost (wage per unit of output)
         if self.production > 0:
@@ -143,7 +157,8 @@ class Firm(Agent):
 
         # Update price using continuous adjustment with damping to avoid instability
         price_adjustment = theta_d * excess_demand_ratio + theta_c * unit_cost_change
-        price_adjustment = max(-0.05, min(0.05, price_adjustment))
+        max_move = getattr(config, 'MAX_PRICE_ADJUSTMENT', 0.05)
+        price_adjustment = max(-max_move, min(max_move, price_adjustment))
         self.price = self.price * (1 + price_adjustment)
 
         # Floor price to avoid negative or too low
