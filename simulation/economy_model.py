@@ -149,14 +149,38 @@ class EconomyModel(Model):
         """
 
         # 1. Firms determine labor demand
-        # Divide total market demand across firms
-        total_expected_demand = self.goods_market.total_demand if self.goods_market.total_demand > 0 else 100
+        # Use previous period's production as baseline (adaptive expectations)
+        # This is more stable than using quantity demanded, which varies with prices
+        total_previous_production = self.goods_market.total_supply if self.goods_market.total_supply > 0 else 100
         num_firms = len(self.firms) if self.firms else 1
 
         for firm in self.firms:
-            # Each firm expects a share of total demand
-            expected_demand_per_firm = total_expected_demand / num_firms
-            firm.determine_labor_demand(expected_demand_per_firm)
+            # Each firm expects to produce similar to last period (adaptive expectations)
+            # Use firm's own production if available, otherwise use market average
+            if firm.production > 0:
+                # Adjust slightly based on inventory levels (max ±5% per period)
+                if firm.inventory > firm.production * 2:
+                    # Too much inventory - reduce production 5%
+                    expected_demand_per_firm = firm.production * 0.95
+                elif firm.inventory < firm.production * 0.5:
+                    # Low inventory - increase production 5%
+                    expected_demand_per_firm = firm.production * 1.05
+                else:
+                    # Normal - maintain production
+                    expected_demand_per_firm = firm.production
+            else:
+                # New firm or no production yet - use conservative market share
+                expected_demand_per_firm = total_previous_production / num_firms
+
+            # Determine labor demand
+            desired_labor = firm.determine_labor_demand(expected_demand_per_firm)
+
+            # Cap labor force changes at ±20% per period (realistic hiring/firing constraints)
+            current_employees = len(firm.employees)
+            if current_employees > 0:
+                max_labor = int(current_employees * 1.2)
+                min_labor = max(1, int(current_employees * 0.8))
+                firm.labor_demand = max(min_labor, min(max_labor, firm.labor_demand))
 
         # 2. Clear labor market
         labor_results = self.labor_market.clear_market(self.consumers, self.firms)
