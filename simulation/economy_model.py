@@ -1,6 +1,7 @@
 """
 Main economy simulation model
 """
+import logging
 from types import MethodType
 from mesa import Model
 from simulation.schedulers import RandomActivation
@@ -10,6 +11,8 @@ from simulation.markets import LaborMarket, GoodsMarket
 from simulation.metrics import MetricsCalculator
 from narrative.ai_narrator import AINarrator
 import config
+
+LOGGER = logging.getLogger(__name__)
 
 
 class EconomyModel(Model):
@@ -63,7 +66,16 @@ class EconomyModel(Model):
         self.goods_market = GoodsMarket()
         self.metrics = MetricsCalculator()
         self.narrator = None
-        self._narrative_cooldown = 0
+        self.narrative_cooldown = 0  # Cooldown counter for narratives
+        self.should_generate_narrative = False  # Flag to trigger narrative generation
+        self.narrative_history = []  # Store all generated narratives with their step numbers
+
+        # Track previous policy values to detect changes
+        self._last_tax_rate = initial_vat_rate
+        self._last_interest_rate = initial_interest_rate
+        self._last_welfare = initial_welfare
+        self._last_govt_spending = initial_govt_spending
+
         if getattr(config, "ENABLE_AI_NARRATIVE", False):
             self.narrator = AINarrator()
 
@@ -215,12 +227,36 @@ class EconomyModel(Model):
             self.goods_market
         )
 
-        if self.narrator is not None and self._narrative_cooldown > 0:
-            history = self.metrics.get_history()
-            narrative = self.narrator.generate(current_metrics, history)
-            if narrative:
-                current_metrics['narrative'] = narrative
-            self._narrative_cooldown -= 1
+        # Generate narrative only when triggered by policy changes or crises (not on step 0)
+        if self.narrator is not None and self.narrator.enabled and self.current_step > 0:
+            if self.should_generate_narrative or self.narrative_cooldown > 0:
+                LOGGER.info(f"Generating narrative at step {self.current_step}, cooldown={self.narrative_cooldown}")
+                history = self.metrics.get_history()
+                try:
+                    narrative = self.narrator.generate(current_metrics, history)
+                    if narrative:
+                        # Add to history list (newest first)
+                        self.narrative_history.insert(0, {
+                            'step': self.current_step,
+                            'text': narrative
+                        })
+                        # Keep only last 10 narratives
+                        if len(self.narrative_history) > 10:
+                            self.narrative_history = self.narrative_history[:10]
+
+                        current_metrics['narrative_history'] = self.narrative_history
+                        self.metrics.latest_metrics['narrative_history'] = self.narrative_history
+                        LOGGER.info(f"Narrative generated and added to history: {narrative[:50]}...")
+                    else:
+                        LOGGER.warning("Narrative generation returned empty result")
+                except Exception as exc:
+                    LOGGER.warning("Narrative generation failed: %s", exc, exc_info=True)
+
+                # Decrease cooldown counter
+                if self.narrative_cooldown > 0:
+                    self.narrative_cooldown -= 1
+                # Reset flag after generating
+                self.should_generate_narrative = False
 
         # Advance time
         self.current_step += 1
@@ -239,13 +275,6 @@ class EconomyModel(Model):
     def get_current_state(self):
         """Get current state of the economy"""
         return self.metrics.get_latest_metrics()
-
-    def _arm_narrative(self):
-        if self.narrator is not None:
-            steps = getattr(config, 'NARRATIVE_COOLDOWN_STEPS', 0)
-            if steps:
-                self._narrative_cooldown = max(self._narrative_cooldown, steps)
-
 
     def reset(self):
         """Reset the simulation to initial conditions"""
@@ -269,31 +298,44 @@ class EconomyModel(Model):
     # Policy control methods (for dashboard)
     def set_tax_rate(self, rate):
         """Update government tax rate"""
-        self.government.set_tax_rate(rate)
-        self._arm_narrative()
+        if abs(rate - self._last_tax_rate) > 0.001:
+            self.government.set_tax_rate(rate)
+            self._last_tax_rate = rate
+        else:
+            self.government.set_tax_rate(rate)
 
     def set_interest_rate(self, rate):
         """Update central bank interest rate"""
-        self.central_bank.set_interest_rate(rate)
-        self._arm_narrative()
+        if abs(rate - self._last_interest_rate) > 0.001:
+            self.central_bank.set_interest_rate(rate)
+            self._last_interest_rate = rate
+        else:
+            self.central_bank.set_interest_rate(rate)
 
     def set_welfare_payment(self, amount):
         """Update welfare payment"""
-        self.government.set_welfare_payment(amount)
-        self._arm_narrative()
+        if abs(amount - self._last_welfare) > 0.1:
+            self.government.set_welfare_payment(amount)
+            self._last_welfare = amount
+        else:
+            self.government.set_welfare_payment(amount)
 
     def set_govt_spending(self, amount):
         """Update government spending"""
-        self.government.set_govt_spending(amount)
-        self._arm_narrative()
+        if abs(amount - self._last_govt_spending) > 0.1:
+            self.government.set_govt_spending(amount)
+            self._last_govt_spending = amount
+        else:
+            self.government.set_govt_spending(amount)
 
     def enable_auto_monetary_policy(self, enabled):
         """Enable/disable automatic monetary policy"""
         self.central_bank.enable_auto_policy(enabled)
-        self._arm_narrative()
 
     def trigger_crisis(self, crisis_type):
         """Trigger a pre-configured crisis scenario"""
+        LOGGER.info(f"Crisis triggered: {crisis_type}")
+
         if crisis_type == 'recession':
             # Demand shock: households lose wealth and firms cut investment plans
             for consumer in self.consumers:
@@ -304,7 +346,11 @@ class EconomyModel(Model):
                 firm.labor_demand = max(1, int(firm.labor_demand * 0.7))
             self.goods_market.smoothed_demand *= 0.7
             self.central_bank.crisis_response('recession')
-            self._arm_narrative()
+            # Trigger AI narrative for crisis
+            cooldown_steps = getattr(config, 'NARRATIVE_COOLDOWN_STEPS', 2)
+            self.narrative_cooldown = cooldown_steps
+            self.should_generate_narrative = True
+            LOGGER.info(f"Narrative trigger set: cooldown={cooldown_steps}, flag={self.should_generate_narrative}")
 
         elif crisis_type == 'inflation':
             # Demand surge and monetary tightening to fight inflation
@@ -317,4 +363,8 @@ class EconomyModel(Model):
                 firm.labor_demand = max(1, int(firm.labor_demand * 1.15))
             self.goods_market.smoothed_demand *= 1.2
             self.central_bank.crisis_response('inflation')
-            self._arm_narrative()
+            # Trigger AI narrative for crisis
+            cooldown_steps = getattr(config, 'NARRATIVE_COOLDOWN_STEPS', 2)
+            self.narrative_cooldown = cooldown_steps
+            self.should_generate_narrative = True
+            LOGGER.info(f"Narrative trigger set: cooldown={cooldown_steps}, flag={self.should_generate_narrative}")

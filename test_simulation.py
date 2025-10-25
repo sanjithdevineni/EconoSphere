@@ -10,7 +10,10 @@ import config
 def _print_narrative(metrics):
     narrative = metrics.get("narrative") if isinstance(metrics, dict) else None
     if narrative:
-        print(f"      📰 {narrative}")
+        try:
+            print(f"      [NEWS] {narrative}")
+        except UnicodeEncodeError:
+            print(f"      [NEWS] {narrative.encode('ascii', 'ignore').decode('ascii')}")
 
 
 def test_basic_simulation():

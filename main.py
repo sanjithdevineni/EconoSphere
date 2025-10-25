@@ -2,8 +2,15 @@
 Main entry point for MacroEcon Simulator
 """
 
+import logging
 from dashboard.app import create_dashboard
 import config
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(levelname)s] %(name)s: %(message)s'
+)
 
 
 def main():
