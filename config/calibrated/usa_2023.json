@@ -1,0 +1,18 @@
+{
+  "country": "USA",
+  "year": 2023,
+  "parameters": {
+    "mpc": 0.68,
+    "tfp_a": 1.25,
+    "gamma": 0.72,
+    "depreciation": 0.045,
+    "unemployment_rate": 0.037,
+    "gdp_per_capita": 76000
+  },
+  "diagnostics": {
+    "mpc": {"r2": 0.85, "mae": 0.03},
+    "tfp_a": {"r2": 0.82, "mae": 0.12},
+    "gamma": {"r2": 0.78, "mae": 0.02},
+    "depreciation": {"r2": 0.66, "mae": 0.007}
+  }
+}

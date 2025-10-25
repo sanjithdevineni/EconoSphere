@@ -11,7 +11,7 @@ from typing import Iterable
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
 
@@ -80,18 +80,13 @@ def derive_training_labels(features: pd.DataFrame) -> pd.DataFrame:
     return labels
 
 
-def fit_regressor(X: pd.DataFrame, y: pd.Series) -> tuple[GradientBoostingRegressor, dict[str, float]]:
-    """Train a gradient boosting regressor with evaluation metrics."""
+def fit_regressor(X: pd.DataFrame, y: pd.Series) -> tuple[LinearRegression, dict[str, float]]:
+    """Train a linear regression model with evaluation metrics."""
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.2, random_state=13
     )
 
-    model = GradientBoostingRegressor(
-        n_estimators=350,
-        learning_rate=0.05,
-        max_depth=3,
-        random_state=13,
-    )
+    model = LinearRegression()
     model.fit(X_train, y_train)
     predictions = model.predict(X_test)
     metrics = {
@@ -99,6 +94,33 @@ def fit_regressor(X: pd.DataFrame, y: pd.Series) -> tuple[GradientBoostingRegres
         "mae": float(mean_absolute_error(y_test, predictions)),
     }
     return model, metrics
+
+def _select_target_row(features: pd.DataFrame, country_key: str, year: int) -> pd.Series:
+    """
+    Return a single Series for (country, year) from a MultiIndex features frame.
+    If multiple rows exist, pick the last one; if none, raise KeyError.
+    """
+    # Ensure predictable .loc/.xs behavior
+    if isinstance(features.index, pd.MultiIndex):
+        features = features.sort_index()
+
+    key = (country_key, int(year))
+    try:
+        row = features.loc[key]
+    except KeyError as e:
+        # Try via xs if level names differ
+        try:
+            row = features.xs(key, level=["country", "year"])
+        except Exception:
+            raise KeyError(f"Missing target row for {key}") from e
+
+    # If it's a DataFrame (duplicate rows), collapse to a single Series
+    if isinstance(row, pd.DataFrame):
+        if row.empty:
+            raise KeyError(f"Empty slice for {key}")
+        row = row.iloc[-1]
+
+    return row  # Series
 
 
 def calibrate_parameters(
@@ -113,26 +135,41 @@ def calibrate_parameters(
     features = engineer_features(dataset)
     labels = derive_training_labels(features)
 
-    index_key = (target_country.upper(), target_year)
-    if index_key not in features.index:
-        raise ValueError("Target country/year not present in dataset")
+    country_key = target_country.upper()
+    # Normalize MultiIndex names/types for downstream selection
+    if isinstance(features.index, pd.MultiIndex):
+        features.index = features.index.set_names(["country", "year"])
+        years = features.index.get_level_values("year").astype(int)
+        countries = features.index.get_level_values("country")
+        features.index = pd.MultiIndex.from_arrays([countries, years], names=["country", "year"])
+        features = features.sort_index()
 
-    target_row = features.loc[index_key]
+    # ---- select target row as a Series
+    target_row = _select_target_row(features, country_key, target_year)
 
     fitted: dict[str, float] = {}
     diagnostics: dict[str, dict[str, float]] = {}
 
     for param in baseline_parameters:
         model, metrics = fit_regressor(features, labels[param])
-        fitted[param] = float(model.predict(target_row.to_frame().T)[0])
+
+        # Align columns to the model's training columns if available
+        X_cols = getattr(model, "feature_names_in_", None)
+        if X_cols is not None:
+            X_target = target_row.reindex(X_cols).to_frame().T
+        else:
+            X_target = target_row.to_frame().T
+
+        fitted[param] = float(model.predict(X_target)[0])
         diagnostics[param] = metrics
 
-    fitted["unemployment_rate"] = float(features.loc[target_year, "unemployment_ratio"])
-    fitted["gdp_per_capita"] = float(features.loc[target_year, "gdp_per_capita"])
+    # Pull these directly from the same target_row
+    fitted["unemployment_rate"] = float(target_row["unemployment_ratio"])
+    fitted["gdp_per_capita"] = float(target_row["gdp_per_capita"])
 
     return CalibrationResult(
         year=target_year,
-        country=target_country.upper(),
+        country=country_key,
         parameters=fitted,
         diagnostics=diagnostics,
     )

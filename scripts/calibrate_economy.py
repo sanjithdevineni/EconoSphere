@@ -38,12 +38,12 @@ TRAINING_COUNTRIES = [
 
 INDICATORS = [
     IndicatorRequest("gdp", "NY.GDP.MKTP.CD"),
-    IndicatorRequest("consumption_share", "NE.CON.PETC.ZS"),
+    # OLD: IndicatorRequest("consumption_share", "NE.CON.PETC.ZS"),
+    IndicatorRequest("consumption_share", "NE.CON.TOTL.ZS"),
     IndicatorRequest("unemployment", "SL.UEM.TOTL.ZS"),
     IndicatorRequest("capital_formation", "NE.GDI.TOTL.ZS"),
     IndicatorRequest("population", "SP.POP.TOTL"),
 ]
-
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Calibrate simulation parameters from macro data")
@@ -97,10 +97,31 @@ def main() -> None:
     )
     target = build_country_macro_dataset(args.country, INDICATORS, start_year, args.year)
     combined = pd.concat([training, target])
-    combined = combined[combined.index <= args.year]
+
+    # ---- Fix: filter by the 'year' level of the MultiIndex ----
+    start_year = args.year - args.years_back
+
+    if isinstance(combined.index, pd.MultiIndex):
+        # Ensure level names and types are what we expect
+        if combined.index.names != ["country", "year"]:
+            combined.index = combined.index.set_names(["country", "year"])
+        # Coerce year to int in case it came in as str
+        years = combined.index.get_level_values("year").astype(int)
+        countries = combined.index.get_level_values("country")
+        combined.index = pd.MultiIndex.from_arrays([countries, years],
+                                                names=["country", "year"])
+        mask = (years >= start_year) & (years <= args.year)
+        combined = combined[mask]
+    else:
+        # Single-level index fallback (unlikely here)
+        combined = combined[(combined.index >= start_year) & (combined.index <= args.year)]
+
+    # Optional scenario transform
     combined = apply_scenario(combined, args.scenario)
 
-    result = calibrate_parameters(combined, args.country, args.year)
+    # Use upper-case country key to match the dataset's index
+    country_key = args.country.upper()
+    result = calibrate_parameters(combined, country_key, args.year)
     result.write(args.output)
 
     print(f"Calibration saved to {args.output}")
