@@ -1,0 +1,19 @@
+# Core Simulation
+numpy>=1.24.0
+pandas>=2.0.0
+mesa>=2.1.0
+
+# Dashboard
+dash>=2.14.0
+plotly>=5.17.0
+dash-bootstrap-components>=1.5.0
+
+# Data APIs
+requests>=2.31.0
+wbgapi>=1.0.12
+
+# ML/Predictions (simple)
+scikit-learn>=1.3.0
+
+# Utilities
+python-dotenv>=1.0.0

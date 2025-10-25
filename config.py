@@ -1,0 +1,37 @@
+"""
+Configuration parameters for the economic simulation
+"""
+
+# Simulation Parameters
+NUM_CONSUMERS = 100
+NUM_FIRMS = 10
+SIMULATION_STEPS = 100
+TIME_STEP_DURATION = 1  # Each step = 1 quarter (3 months)
+
+# Initial Economic Conditions
+INITIAL_MONEY_SUPPLY = 1_000_000
+INITIAL_CONSUMER_WEALTH_MEAN = 5000
+INITIAL_CONSUMER_WEALTH_STD = 2000
+INITIAL_FIRM_CAPITAL_MEAN = 50000
+INITIAL_FIRM_CAPITAL_STD = 20000
+
+# Government Parameters
+INITIAL_TAX_RATE = 0.20  # 20%
+INITIAL_WELFARE_PAYMENT = 500
+INITIAL_GOVT_SPENDING = 10000
+
+# Central Bank Parameters
+INITIAL_INTEREST_RATE = 0.05  # 5%
+INFLATION_TARGET = 0.02  # 2%
+RESERVE_RATIO = 0.10  # 10%
+
+# Market Parameters
+INITIAL_WAGE = 1000
+INITIAL_PRICE_LEVEL = 10
+CONSUMER_PROPENSITY_TO_CONSUME = 0.7  # Spend 70% of income
+FIRM_PRODUCTIVITY = 2.0  # Output per worker
+
+# Dashboard Settings
+UPDATE_INTERVAL = 1000  # milliseconds
+PORT = 8050
+DEBUG_MODE = True
