@@ -36,6 +36,26 @@ python main.py
 
 Then open http://localhost:8050 in your browser.
 
+## Real-World Calibration
+
+Generate parameter overrides from World Bank data:
+
+```bash
+# Example: calibrate the United States using the most recent 15 years
+python scripts/calibrate_economy.py --country USA --year 2023 \
+    --output config/calibrated/usa_2023.json
+
+# Use the calibrated values automatically
+export ECON_CALIBRATION_FILE=config/calibrated/usa_2023.json
+python main.py
+```
+
+Optional arguments:
+
+- `--scenario growth` applies a modest growth shock before fitting.
+- `--scenario recession` applies a downside scenario.
+- `--training-countries` lets you customise the estimation panel.
+
 ## Policy Controls
 
 - **Tax Rate**: Adjust government tax rate (0-50%)

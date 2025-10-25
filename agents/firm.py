@@ -70,16 +70,21 @@ class Firm(Agent):
 
         adjusted_labor = desired_labor * interest_penalty * inventory_factor * wage_factor
         avg_workforce_share = len(self.model.consumers) / max(1, len(self.model.firms))
-        max_workers = max(1, int(avg_workforce_share * 1.7))
+        max_workers = max(1, int(avg_workforce_share * 1.2))
 
         current_employees = len(self.employees)
-        baseline = max(current_employees, self.labor_demand or 0, int(avg_workforce_share))
-        max_rate = getattr(config, 'LABOR_ADJUSTMENT_RATE', 0.25)
-        max_increase = max(1, int(round(baseline * (1 + max_rate))))
-        min_decrease = max(1, int(round(baseline * (1 - max_rate))))
+        baseline = current_employees if current_employees > 0 else max(
+            1, self.labor_demand or int(round(avg_workforce_share))
+        )
+        max_rate = getattr(config, "LABOR_ADJUSTMENT_RATE", 0.25)
+        max_delta = max(1, int(round(baseline * max_rate)))
 
         target = int(round(adjusted_labor))
-        target = max(min_decrease, min(max_increase, target))
+        if target > baseline + max_delta:
+            target = baseline + max_delta
+        elif target < baseline - max_delta:
+            target = max(1, baseline - max_delta)
+
         target = max(1, min(max_workers, target))
         self.labor_demand = target
 
