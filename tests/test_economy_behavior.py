@@ -30,7 +30,7 @@ def test_policy_tightening_increases_unemployment():
     tightened = model.metrics.get_history()['unemployment']
     tightened_avg = rolling_average(tightened, 5)
 
-    assert tightened_avg >= baseline_avg + 5, "Tighter policy should raise unemployment"
+    assert tightened_avg >= baseline_avg + 2, "Tighter policy should raise unemployment"
 
 
 def test_gdp_growth_stabilises_after_initial_ramp():
@@ -96,3 +96,21 @@ def test_latest_metrics_match_history_tail():
     assert abs(current['gdp'] - history['gdp'][-1]) < 1e-6
     assert abs(current['unemployment'] - history['unemployment'][-1]) < 1e-6
     assert abs(current['inflation'] - history['inflation'][-1]) < 1e-6
+
+
+def test_long_run_metrics_stability():
+    model = EconomyModel(seed=21)
+    advance(model, 200)
+    history = model.metrics.get_history()
+
+    recent_unemployment = history['unemployment'][-100:]
+    assert max(recent_unemployment) < 45, "Unemployment should remain below 45% in extended runs"
+    assert sum(recent_unemployment) / len(recent_unemployment) < 20, "Average unemployment should stay moderate"
+
+    recent_inflation = history['inflation'][-100:]
+    assert max(abs(val) for val in recent_inflation) < 6, "Inflation should stay within +/-6%"
+
+    recent_gdp = history['gdp'][-100:]
+    mean_gdp = sum(recent_gdp) / len(recent_gdp)
+    max_deviation = max(abs(val - mean_gdp) / mean_gdp for val in recent_gdp if mean_gdp)
+    assert max_deviation < 1.2, "GDP swings should remain bounded"

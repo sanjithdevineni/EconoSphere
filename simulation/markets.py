@@ -16,6 +16,7 @@ class LaborMarket:
         self.total_employment = 0
         self.unemployment_rate = 0
         self._rng = rng or random.Random()
+        self.matching_efficiency = 0.96
 
     def clear_market(self, consumers, firms):
         """
@@ -44,11 +45,17 @@ class LaborMarket:
 
         # Match workers to jobs
         matches = 0
-        for i, firm in enumerate(job_openings):
-            if i < len(unemployed):
-                worker = unemployed[i]
+        worker_index = 0
+        for firm in job_openings:
+            if worker_index >= len(unemployed):
+                break
+            if self._rng.random() <= self.matching_efficiency:
+                worker = unemployed[worker_index]
                 firm.hire_worker(worker, firm.wage_offered)
                 matches += 1
+                worker_index += 1
+            else:
+                worker_index += 1
 
         # Calculate employment statistics
         self.total_employment = matches
@@ -122,9 +129,11 @@ class GoodsMarket:
         self.inflation_rate = 0
         self.price_sensitivity = 1.0  # lambda parameter for price-sensitive allocation
         self.smoothed_demand = 20
-        self.demand_smoothing = 0.3
+        self.demand_smoothing = 0.25
         self.max_price_adjustment = 0.1
         self.last_firm_demands = {}
+        self.expected_demand_smoothing = 0.3
+        self.minimum_expected_per_firm = 18.0
 
     def collect_demand(self, consumers, firms):
         """
@@ -157,7 +166,8 @@ class GoodsMarket:
         """
         if num_firms <= 0:
             return self.smoothed_demand
-        return self.smoothed_demand / num_firms
+        per_firm = self.smoothed_demand / num_firms
+        return max(self.minimum_expected_per_firm, per_firm)
 
     def clear_market(self, consumers, firms, govt_spending=0):
         """
@@ -198,9 +208,20 @@ class GoodsMarket:
         for firm in firms:
             demand_for_firm = firm_demands.get(firm.unique_id, 0)
             actual_sold = firm.sell_goods(demand_for_firm)
-            firm.expected_future_demand = actual_sold + 0.1 * (demand_for_firm - actual_sold)
-            lower_bound = max(1, actual_sold * 0.5)
-            upper_bound = max(lower_bound, actual_sold + 20)
+            backlog = max(0.0, demand_for_firm - actual_sold)
+            target_expectation = actual_sold + backlog
+
+            if getattr(firm, "expected_future_demand", 0) > 0:
+                smoothing = self.expected_demand_smoothing
+                firm.expected_future_demand = (
+                    (1 - smoothing) * firm.expected_future_demand
+                    + smoothing * target_expectation
+                )
+            else:
+                firm.expected_future_demand = target_expectation
+
+            lower_bound = max(1.0, actual_sold * 0.5)
+            upper_bound = max(lower_bound, actual_sold + backlog * 0.35 + 5)
             firm.expected_future_demand = max(lower_bound, min(upper_bound, firm.expected_future_demand))
             total_sales_value += actual_sold * firm.price
             total_sales_quantity += actual_sold
@@ -269,3 +290,18 @@ class GoodsMarket:
                 firm.price *= 1.05
 
             firm.price = max(1, firm.price)
+
+    def adjust_demand_expectations(self, unemployment_rate):
+        """Adapt price sensitivity and minimum demand floor to slack."""
+        if unemployment_rate > 0.25:
+            target_sensitivity = max(0.5, 1.0 - (unemployment_rate - 0.25) * 0.8)
+        elif unemployment_rate < 0.08:
+            target_sensitivity = min(1.2, 1.0 + (0.08 - unemployment_rate) * 1.5)
+        else:
+            target_sensitivity = 1.0
+
+        self.price_sensitivity += (target_sensitivity - self.price_sensitivity) * 0.2
+
+        target_min = 14 + unemployment_rate * 25
+        self.minimum_expected_per_firm += (target_min - self.minimum_expected_per_firm) * 0.2
+        self.minimum_expected_per_firm = min(self.minimum_expected_per_firm, 30)

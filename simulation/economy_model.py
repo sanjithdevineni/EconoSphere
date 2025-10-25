@@ -165,6 +165,9 @@ class EconomyModel(Model):
 
         # 2. Clear labor market
         labor_results = self.labor_market.clear_market(self.consumers, self.firms)
+        unemployment_fraction = labor_results['unemployment_rate']
+        self.government.apply_countercyclical_policy(unemployment_fraction * 100)
+        self.goods_market.adjust_demand_expectations(unemployment_fraction)
 
         # 3. Government fiscal policy
         self.government.collect_taxes(self.consumers, self.firms)

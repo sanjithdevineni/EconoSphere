@@ -25,6 +25,8 @@ class Government(Agent):
 
         self.welfare_payment = welfare_payment
         self.govt_spending = govt_spending
+        self._baseline_welfare = welfare_payment
+        self._baseline_spending = govt_spending
 
         # Fiscal tracking
         self.vat_revenue = 0
@@ -155,3 +157,25 @@ class Government(Agent):
         self.total_welfare_paid = 0
         self.budget_balance = 0
         self.total_spending = 0
+
+    def apply_countercyclical_policy(self, unemployment_rate):
+        """Adjust fiscal levers gradually in response to unemployment."""
+        high_slack = max(0.0, unemployment_rate - 12.0) / 88.0
+        low_slack = max(0.0, 10.0 - unemployment_rate) / 10.0
+
+        if high_slack > 0:
+            target_spending = self._baseline_spending * (1 + 2.0 * high_slack)
+            target_welfare = self._baseline_welfare * (1 + 1.5 * high_slack)
+        elif low_slack > 0:
+            target_spending = self._baseline_spending * (1 - 0.5 * low_slack)
+            target_welfare = self._baseline_welfare * (1 - 0.3 * low_slack)
+        else:
+            target_spending = self._baseline_spending
+            target_welfare = self._baseline_welfare
+
+        adjust_speed = 0.25 if high_slack > 0 else 0.15
+        self.govt_spending += (target_spending - self.govt_spending) * adjust_speed
+        self.welfare_payment += (target_welfare - self.welfare_payment) * adjust_speed
+
+        self.govt_spending = max(0, self.govt_spending)
+        self.welfare_payment = max(0, self.welfare_payment)

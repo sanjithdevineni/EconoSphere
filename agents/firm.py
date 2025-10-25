@@ -50,8 +50,8 @@ class Firm(Agent):
         productive_capacity = max(self.productivity, 0.1)
         target_output = max(expected_demand, 1)
 
-        # Approximate linear labor demand then apply diminishing returns
-        desired_labor = (target_output / productive_capacity) ** self.gamma
+        # Approximate labor required given production function Q = A * L^gamma
+        desired_labor = (target_output / productive_capacity) ** (1.0 / self.gamma)
 
         # Penalize hiring when borrowing is expensive
         interest_penalty = max(0.4, 1 - interest_rate * 5)
@@ -70,8 +70,18 @@ class Firm(Agent):
 
         adjusted_labor = desired_labor * interest_penalty * inventory_factor * wage_factor
         avg_workforce_share = len(self.model.consumers) / max(1, len(self.model.firms))
-        max_workers = max(1, int(avg_workforce_share * 2))
-        self.labor_demand = max(1, min(max_workers, int(round(adjusted_labor))))
+        max_workers = max(1, int(avg_workforce_share * 1.2))
+        target_demand = max(1, min(max_workers, int(round(adjusted_labor))))
+
+        current = self.labor_demand if self.labor_demand > 0 else target_demand
+        if self.labor_demand > 0:
+            max_delta = max(1, int(current * 0.25))
+            if target_demand > current:
+                target_demand = min(target_demand, current + max_delta)
+            else:
+                target_demand = max(1, current - max_delta, target_demand)
+
+        self.labor_demand = target_demand
 
         return self.labor_demand
 
