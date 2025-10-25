@@ -97,8 +97,8 @@ class CentralBank(Agent):
         """
         if crisis_type == 'recession':
             # Slash rates, expand money supply
-            self.interest_rate = 0.001  # Near zero
-            self.quantitative_easing(self.money_supply * 0.2)  # 20% expansion
+            self.interest_rate = 0.02  # accommodative but not zero
+            self.quantitative_easing(self.money_supply * 0.1)  # 10% expansion
 
         elif crisis_type == 'inflation':
             # Raise rates aggressively
