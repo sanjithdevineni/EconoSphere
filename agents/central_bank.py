@@ -15,7 +15,8 @@ class CentralBank(Agent):
     """
 
     def __init__(self, unique_id, model, interest_rate=0.05, inflation_target=0.02, money_supply=1_000_000):
-        super().__init__(unique_id, model)
+        super().__init__(model)
+        self.unique_id = unique_id
         self.interest_rate = interest_rate
         self.inflation_target = inflation_target
         self.money_supply = money_supply

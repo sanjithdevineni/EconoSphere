@@ -16,7 +16,8 @@ class Government(Agent):
 
     def __init__(self, unique_id, model, vat_rate=0.15, payroll_rate=0.10, corporate_rate=0.20,
                  welfare_payment=500, govt_spending=10000):
-        super().__init__(unique_id, model)
+        super().__init__(model)
+        self.unique_id = unique_id
         # Tax rates
         self.vat_rate = vat_rate  # Value Added Tax on consumption
         self.payroll_rate = payroll_rate  # Payroll tax on wages
@@ -46,6 +47,10 @@ class Government(Agent):
     def set_corporate_rate(self, rate):
         """Adjust corporate tax rate"""
         self.corporate_rate = max(0, min(1.0, rate))
+
+    def set_tax_rate(self, rate):
+        """Compatibility wrapper for legacy API expecting a single tax rate setter."""
+        self.set_vat_rate(rate)
 
     def set_welfare_payment(self, amount):
         """Adjust welfare payment per unemployed person"""

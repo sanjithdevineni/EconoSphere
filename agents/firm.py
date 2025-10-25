@@ -16,7 +16,8 @@ class Firm(Agent):
     """
 
     def __init__(self, unique_id, model, initial_capital, productivity=2.0, gamma=0.7):
-        super().__init__(unique_id, model)
+        super().__init__(model)
+        self.unique_id = unique_id
         self.capital = initial_capital  # Physical capital stock (machines, buildings)
         self.cash = initial_capital * 0.1  # Financial position (liquid assets)
         self.productivity = productivity  # Total factor productivity

@@ -16,7 +16,8 @@ class Consumer(Agent):
     """
 
     def __init__(self, unique_id, model, initial_wealth, propensity_to_consume=0.7):
-        super().__init__(unique_id, model)
+        super().__init__(model)
+        self.unique_id = unique_id
         self.wealth = initial_wealth
         self.income = 0
         self.employed = False

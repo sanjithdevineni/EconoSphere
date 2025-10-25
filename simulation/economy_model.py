@@ -3,8 +3,9 @@ Main economy simulation model
 """
 
 import numpy as np
+from types import MethodType
 from mesa import Model
-from mesa.time import RandomActivation
+from simulation.schedulers import RandomActivation
 
 from agents import Consumer, Firm, Government, CentralBank
 from simulation.markets import LaborMarket, GoodsMarket
@@ -29,6 +30,26 @@ class EconomyModel(Model):
         initial_govt_spending=config.INITIAL_GOVT_SPENDING
     ):
         super().__init__()
+
+        self._last_step_result = None
+
+        original_user_step = self._user_step
+
+        def _capture_step(_self, *args, **kwargs):
+            result = original_user_step(*args, **kwargs)
+            _self._last_step_result = result
+            return result
+
+        self._user_step = MethodType(_capture_step, self)
+
+        original_step = self.step
+
+        def _step_with_return(_self, *args, **kwargs):
+            _self._last_step_result = None
+            original_step(*args, **kwargs)
+            return _self._last_step_result
+
+        self.step = MethodType(_step_with_return, self)
 
         self.num_consumers = num_consumers
         self.num_firms = num_firms
