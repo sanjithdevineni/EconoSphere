@@ -22,7 +22,7 @@ def main():
     print("=" * 60)
 
     app = create_dashboard()
-    app.run_server(debug=config.DEBUG_MODE, port=config.PORT)
+    app.run(debug=config.DEBUG_MODE, port=config.PORT)
 
 
 if __name__ == '__main__':
