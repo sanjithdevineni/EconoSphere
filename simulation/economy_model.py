@@ -155,6 +155,7 @@ class EconomyModel(Model):
 
         for firm in self.firms:
             expected = firm.expected_future_demand if firm.expected_future_demand > 0 else default_expected
+            expected = max(expected, getattr(config, 'MIN_EXPECTED_DEMAND_PER_FIRM', default_expected))
             firm.determine_labor_demand(expected, interest_rate)
 
         # 2. Clear labor market
@@ -270,19 +271,24 @@ class EconomyModel(Model):
     def trigger_crisis(self, crisis_type):
         """Trigger a pre-configured crisis scenario"""
         if crisis_type == 'recession':
-            # Reduce consumer wealth (simulates demand shock)
+            # Demand shock: households lose wealth and firms cut investment plans
             for consumer in self.consumers:
                 consumer.wealth *= 0.7
-            # Reduce firm capital
             for firm in self.firms:
                 firm.capital *= 0.7
-            # Central bank responds
+                firm.expected_future_demand = max(1.0, firm.expected_future_demand * 0.6)
+                firm.labor_demand = max(1, int(firm.labor_demand * 0.7))
+            self.goods_market.smoothed_demand *= 0.7
             self.central_bank.crisis_response('recession')
 
         elif crisis_type == 'inflation':
-            # Increase money supply (too much money chasing goods)
-            self.central_bank.money_supply *= 1.5
-            # Increase govt spending
-            self.government.govt_spending *= 1.5
-            # Central bank responds
+            # Demand surge and monetary tightening to fight inflation
+            self.central_bank.money_supply *= 1.4
+            self.government.govt_spending *= 1.3
+            for consumer in self.consumers:
+                consumer.wealth *= 1.1
+            for firm in self.firms:
+                firm.expected_future_demand *= 1.2
+                firm.labor_demand = max(1, int(firm.labor_demand * 1.15))
+            self.goods_market.smoothed_demand *= 1.2
             self.central_bank.crisis_response('inflation')

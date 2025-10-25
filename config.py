@@ -19,8 +19,8 @@ INITIAL_FIRM_CAPITAL_STD = 20000
 INITIAL_VAT_RATE = 0.15  # 15% Value Added Tax
 INITIAL_PAYROLL_RATE = 0.10  # 10% Payroll tax
 INITIAL_CORPORATE_RATE = 0.20  # 20% Corporate tax
-INITIAL_WELFARE_PAYMENT = 500
-INITIAL_GOVT_SPENDING = 10000
+INITIAL_WELFARE_PAYMENT = 350
+INITIAL_GOVT_SPENDING = 3000
 
 # Central Bank Parameters
 INITIAL_INTEREST_RATE = 0.05  # 5%
@@ -30,8 +30,11 @@ RESERVE_RATIO = 0.10  # 10%
 # Market Parameters
 INITIAL_WAGE = 1000
 INITIAL_PRICE_LEVEL = 10
-CONSUMER_PROPENSITY_TO_CONSUME = 0.7  # Marginal propensity to consume (MPC)
-CONSUMER_WEALTH_SPEND_RATE = 0.03  # Share of wealth households are willing to draw down per step
+CONSUMER_PROPENSITY_TO_CONSUME = 0.58  # Marginal propensity to consume (MPC)
+
+# Labor Adjustment Parameters
+LABOR_ADJUSTMENT_RATE = 0.6  # Max fractional change in firm workforce per period
+MIN_EXPECTED_DEMAND_PER_FIRM = 2  # Floor on expected demand to prevent collapse
 
 # Firm Production Parameters
 FIRM_PRODUCTIVITY = 2.0  # Total factor productivity (TFP)
@@ -41,10 +44,12 @@ FIRM_INVESTMENT_SHARE = 0.1  # Share of profit invested (xi)
 FIRM_PRODUCTIVITY_GROWTH_COEFF = 0.1  # Productivity growth coefficient (kappa)
 
 # Price Adjustment Parameters
-PRICE_DEMAND_SENSITIVITY = 0.02  # theta_d: sensitivity to excess demand (kept low for stability)
+PRICE_DEMAND_SENSITIVITY = 0.02  # theta_d: sensitivity to excess demand (0.05-0.2 typical)
 PRICE_COST_SENSITIVITY = 0.05  # theta_c: sensitivity to cost changes (0.05-0.2 typical)
-MAX_EXCESS_DEMAND_RATIO = 1.5  # Cap on demand vs supply used in pricing
-MAX_PRICE_ADJUSTMENT = 0.03  # Maximum fractional price change per step
+MAX_EXCESS_DEMAND_RATIO = 0.8  # Cap on demand vs supply used in pricing
+MAX_PRICE_ADJUSTMENT = 0.02  # Maximum fractional price change per step
+DEMAND_BALANCE_TOLERANCE = 0.02  # Range within which demand vs supply is treated as balanced
+DEMAND_ADJUSTMENT_ALPHA = 0.35  # Speed at which firms update expected demand after shortages
 
 # Wage Adjustment Parameters
 WAGE_ADJUSTMENT_SPEED = 0.05  # eta: wage response to labor shortage (0.05-0.15 typical)
