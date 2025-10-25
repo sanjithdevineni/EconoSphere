@@ -11,10 +11,11 @@ class LaborMarket:
     Implements job matching and wage determination
     """
 
-    def __init__(self):
+    def __init__(self, rng=None):
         self.market_wage = 1000  # Average market wage
         self.total_employment = 0
         self.unemployment_rate = 0
+        self._rng = rng or random.Random()
 
     def clear_market(self, consumers, firms):
         """
@@ -39,7 +40,7 @@ class LaborMarket:
 
         # Get unemployed workers
         unemployed = [c for c in consumers if not c.employed]
-        random.shuffle(unemployed)
+        self._rng.shuffle(unemployed)
 
         # Match workers to jobs
         matches = 0
@@ -64,7 +65,7 @@ class LaborMarket:
             'market_wage': self.market_wage
         }
 
-    def adjust_wages(self, firms, eta=None):
+    def adjust_wages(self, firms, eta=None, unemployment_rate=None):
         """
         Firms adjust wages based on their own labor shortage
 
@@ -92,9 +93,15 @@ class LaborMarket:
             else:
                 labor_shortage = 0
 
-            # Adjust wage based on shortage
-            wage_adjustment = eta * labor_shortage
-            firm.wage_offered = firm.wage_offered * (1 + wage_adjustment)
+            if labor_shortage > 0:
+                # Adjust wage based on shortage
+                wage_adjustment = eta * labor_shortage
+                firm.wage_offered = firm.wage_offered * (1 + wage_adjustment)
+            elif unemployment_rate is not None and unemployment_rate > 0.1:
+                # Ease wages downward when unemployment is persistently high
+                downward_speed = min(eta, 0.03)
+                reduction = downward_speed * min(0.5, unemployment_rate)
+                firm.wage_offered = firm.wage_offered * (1 - reduction)
 
             # Minimum wage floor (as index, not absolute dollar amount)
             min_wage_index = 500  # Base minimum wage
@@ -114,6 +121,10 @@ class GoodsMarket:
         self.previous_cpi = 10
         self.inflation_rate = 0
         self.price_sensitivity = 1.0  # lambda parameter for price-sensitive allocation
+        self.smoothed_demand = 20
+        self.demand_smoothing = 0.3
+        self.max_price_adjustment = 0.1
+        self.last_firm_demands = {}
 
     def collect_demand(self, consumers, firms):
         """
@@ -130,6 +141,7 @@ class GoodsMarket:
 
         # Total demand in quantity terms
         self.total_demand = sum(firm_demands.values())
+        self.last_firm_demands = dict(firm_demands)
         return firm_demands
 
     def collect_supply(self, firms):
@@ -138,6 +150,14 @@ class GoodsMarket:
         """
         self.total_supply = sum(f.production for f in firms)
         return self.total_supply
+
+    def get_expected_demand_per_firm(self, num_firms):
+        """
+        Return smoothed market demand per firm for use in planning.
+        """
+        if num_firms <= 0:
+            return self.smoothed_demand
+        return self.smoothed_demand / num_firms
 
     def clear_market(self, consumers, firms, govt_spending=0):
         """
@@ -178,6 +198,10 @@ class GoodsMarket:
         for firm in firms:
             demand_for_firm = firm_demands.get(firm.unique_id, 0)
             actual_sold = firm.sell_goods(demand_for_firm)
+            firm.expected_future_demand = actual_sold + 0.1 * (demand_for_firm - actual_sold)
+            lower_bound = max(1, actual_sold * 0.5)
+            upper_bound = max(lower_bound, actual_sold + 20)
+            firm.expected_future_demand = max(lower_bound, min(upper_bound, firm.expected_future_demand))
             total_sales_value += actual_sold * firm.price
             total_sales_quantity += actual_sold
 
@@ -211,6 +235,18 @@ class GoodsMarket:
 
         # Update total demand for next period
         total_demand_quantity = sum(firm_demands.values())
+
+        observed_demand = total_sales_quantity + 0.2 * max(total_demand_quantity - total_sales_quantity, 0)
+
+        if observed_demand > 0:
+            self.smoothed_demand = (
+                (1 - self.demand_smoothing) * self.smoothed_demand
+                + self.demand_smoothing * observed_demand
+            )
+        else:
+            self.smoothed_demand = (1 - self.demand_smoothing) * self.smoothed_demand
+
+        self.smoothed_demand = max(10, min(self.smoothed_demand, 500))
 
         return {
             'total_demand': total_demand_quantity,

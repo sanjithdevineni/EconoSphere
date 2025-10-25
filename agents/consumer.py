@@ -2,7 +2,7 @@
 Consumer Agent: Represents individual consumers in the economy
 """
 
-import numpy as np
+import math
 from mesa import Agent
 
 
@@ -50,11 +50,11 @@ class Consumer(Agent):
         Returns:
             dict mapping firm_id -> quantity demanded from that firm
         """
-        # Total cash available for spending (no income tax, VAT is paid at point of sale)
-        cash_on_hand = self.wealth + self.income + self.welfare_received
-        cash_on_hand = max(0, cash_on_hand)
+        disposable_income = max(0, self.income + self.welfare_received)
+        accessible_savings = max(0, min(self.wealth * 0.05, self.wealth))
+        cash_on_hand = disposable_income + accessible_savings
 
-        # Consumption budget based on MPC
+        # Consumption budget based on MPC (only a share of cash is spent)
         consumption_budget = self.propensity_to_consume * cash_on_hand
         consumption_budget = min(consumption_budget, cash_on_hand)
 
@@ -62,19 +62,18 @@ class Consumer(Agent):
 
         # If no budget or no firms, return empty demand
         if consumption_budget <= 0 or not firms:
-            # Still update wealth
-            self.wealth = self.wealth + self.income + self.welfare_received - consumption_budget
+            # Unspent disposable income adds to savings
+            self.wealth = self.wealth + disposable_income
             return {}
 
         # Compute price-sensitive shares using exponential model
         # exp(-lambda * price) gives higher weight to lower prices
-        import numpy as np
         price_weights = {}
         total_weight = 0
 
         for firm in firms:
             if firm.price > 0:
-                weight = np.exp(-price_sensitivity * firm.price)
+                weight = math.exp(-price_sensitivity * firm.price)
                 price_weights[firm.unique_id] = weight
                 total_weight += weight
 
@@ -87,8 +86,12 @@ class Consumer(Agent):
                 quantity = spending_on_firm / max(firm.price, 0.01)  # avoid division by zero
                 firm_demands[firm.unique_id] = quantity
 
-        # Update wealth: add income and welfare, subtract consumption
-        self.wealth = self.wealth + self.income + self.welfare_received - consumption_budget
+        # Portion of consumption financed from disposable income first
+        income_used = min(consumption_budget, disposable_income)
+        savings_used = min(consumption_budget - income_used, accessible_savings)
+
+        # Update wealth: add unspent disposable income, subtract savings used
+        self.wealth = max(0, self.wealth + (disposable_income - income_used) - savings_used)
 
         return firm_demands
 

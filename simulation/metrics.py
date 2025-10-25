@@ -2,8 +2,6 @@
 Economic metrics calculator
 """
 
-import numpy as np
-
 
 class MetricsCalculator:
     """
@@ -21,6 +19,7 @@ class MetricsCalculator:
             'govt_debt': [],
             'interest_rate': []
         }
+        self.latest_metrics = None
 
     def calculate_gdp(self, firms):
         """
@@ -28,7 +27,6 @@ class MetricsCalculator:
         Simplified: Sum of all firm revenues
         """
         gdp = sum(firm.revenue for firm in firms)
-        self.history['gdp'].append(gdp)
         return gdp
 
     def calculate_unemployment_rate(self, consumers):
@@ -38,7 +36,6 @@ class MetricsCalculator:
         total = len(consumers)
         unemployed = sum(1 for c in consumers if not c.employed)
         rate = (unemployed / total) * 100 if total > 0 else 0
-        self.history['unemployment'].append(rate)
         return rate
 
     def calculate_inflation_rate(self, current_price, previous_price):
@@ -49,7 +46,6 @@ class MetricsCalculator:
             inflation = ((current_price - previous_price) / previous_price) * 100
         else:
             inflation = 0
-        self.history['inflation'].append(inflation)
         return inflation
 
     def calculate_gini_coefficient(self, consumers):
@@ -75,7 +71,6 @@ class MetricsCalculator:
             cumulative += i * w
 
         gini = (2 * cumulative) / (n * total_wealth) - (n + 1) / n
-        self.history['gini'].append(gini)
         return gini
 
     def calculate_average_wage(self, consumers):
@@ -87,7 +82,6 @@ class MetricsCalculator:
             avg_wage = sum(c.income for c in employed) / len(employed)
         else:
             avg_wage = 0
-        self.history['avg_wage'].append(avg_wage)
         return avg_wage
 
     def calculate_average_price(self, firms):
@@ -98,45 +92,35 @@ class MetricsCalculator:
             avg_price = sum(f.price for f in firms) / len(firms)
         else:
             avg_price = 0
-        self.history['avg_price'].append(avg_price)
         return avg_price
 
-    def get_all_metrics(self, consumers, firms, government, central_bank, goods_market):
+    def update_metrics(self, consumers, firms, government, central_bank, goods_market):
         """
-        Calculate all metrics at once
-        Returns a dictionary of current metrics
+        Calculate all metrics at once and store them in history.
+        Returns a dictionary of current metrics.
         """
-        # GDP
         gdp = self.calculate_gdp(firms)
-
-        # Unemployment
         unemployment = self.calculate_unemployment_rate(consumers)
-
-        # Inflation
         inflation = goods_market.inflation_rate * 100  # Convert to percentage
-
-        # Inequality
         gini = self.calculate_gini_coefficient(consumers)
-
-        # Average wage
         avg_wage = self.calculate_average_wage(consumers)
-
-        # Average price
         avg_price = self.calculate_average_price(firms)
-
-        # Government metrics
         govt_debt = government.debt
         budget_balance = government.budget_balance
-
-        # Central bank metrics
         interest_rate = central_bank.interest_rate * 100  # Convert to percentage
         money_supply = central_bank.money_supply
 
         # Store in history
+        self.history['gdp'].append(gdp)
+        self.history['unemployment'].append(unemployment)
+        self.history['inflation'].append(inflation)
+        self.history['gini'].append(gini)
+        self.history['avg_wage'].append(avg_wage)
+        self.history['avg_price'].append(avg_price)
         self.history['govt_debt'].append(govt_debt)
         self.history['interest_rate'].append(interest_rate)
 
-        return {
+        metrics = {
             'gdp': gdp,
             'unemployment': unemployment,
             'inflation': inflation,
@@ -148,6 +132,25 @@ class MetricsCalculator:
             'interest_rate': interest_rate,
             'money_supply': money_supply
         }
+        self.latest_metrics = metrics
+        return metrics
+
+    def get_latest_metrics(self):
+        """Return the most recently computed metrics without mutating history."""
+        if self.latest_metrics is None:
+            return {
+                'gdp': 0,
+                'unemployment': 0,
+                'inflation': 0,
+                'gini': 0,
+                'avg_wage': 0,
+                'avg_price': 0,
+                'govt_debt': 0,
+                'budget_balance': 0,
+                'interest_rate': 0,
+                'money_supply': 0
+            }
+        return self.latest_metrics.copy()
 
     def get_history(self):
         """Return historical time series data"""
@@ -157,3 +160,4 @@ class MetricsCalculator:
         """Clear all historical data"""
         for key in self.history:
             self.history[key] = []
+        self.latest_metrics = None

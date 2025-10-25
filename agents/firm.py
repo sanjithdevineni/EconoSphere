@@ -2,8 +2,8 @@
 Firm Agent: Represents businesses in the economy
 """
 
-import numpy as np
 from mesa import Agent
+import config
 
 
 class Firm(Agent):
@@ -32,8 +32,9 @@ class Firm(Agent):
         self.inventory = 0
         self.wage_offered = 1000  # Initial wage
         self.depreciation_rate = 0.05  # 5% capital depreciation per period
+        self.expected_future_demand = 0
 
-    def determine_labor_demand(self, expected_demand):
+    def determine_labor_demand(self, expected_demand, interest_rate):
         """
         Decide how many workers to hire based on expected demand for goods
 
@@ -46,12 +47,31 @@ class Firm(Agent):
         """
         # Labor needed to produce expected output
         # Approximate inverse of production function
-        if expected_demand > 0 and self.productivity > 0:
-            # Approximate: L ≈ (Q/A)^(1/γ)
-            desired_labor = (expected_demand / self.productivity) ** (1.0 / self.gamma)
-            self.labor_demand = max(1, int(desired_labor))
+        productive_capacity = max(self.productivity, 0.1)
+        target_output = max(expected_demand, 1)
+
+        # Approximate linear labor demand then apply diminishing returns
+        desired_labor = (target_output / productive_capacity) ** self.gamma
+
+        # Penalize hiring when borrowing is expensive
+        interest_penalty = max(0.4, 1 - interest_rate * 5)
+
+        # Reduce hiring when inventory is already high
+        if self.inventory > target_output:
+            inventory_ratio = target_output / max(self.inventory, 1)
+            inventory_factor = max(0.4, inventory_ratio)
         else:
-            self.labor_demand = 1
+            shortage = target_output - self.inventory
+            inventory_factor = 1 + min(0.3, shortage / max(target_output, 1))
+
+        baseline_wage = config.INITIAL_WAGE
+        wage_factor = baseline_wage / max(self.wage_offered, 1)
+        wage_factor = max(0.7, min(1.5, wage_factor))
+
+        adjusted_labor = desired_labor * interest_penalty * inventory_factor * wage_factor
+        avg_workforce_share = len(self.model.consumers) / max(1, len(self.model.firms))
+        max_workers = max(1, int(avg_workforce_share * 2))
+        self.labor_demand = max(1, min(max_workers, int(round(adjusted_labor))))
 
         return self.labor_demand
 
@@ -102,6 +122,7 @@ class Firm(Agent):
             excess_demand_ratio = (market_demand - market_supply) / max(market_supply, 1)
         else:
             excess_demand_ratio = 0
+        excess_demand_ratio = max(-1, min(1, excess_demand_ratio))
 
         # Calculate unit cost (wage per unit of output)
         if self.production > 0:
@@ -118,9 +139,11 @@ class Firm(Agent):
             unit_cost_change = (current_unit_cost - self.previous_unit_cost) / self.previous_unit_cost
         else:
             unit_cost_change = 0
+        unit_cost_change = max(-1, min(1, unit_cost_change))
 
-        # Update price using continuous adjustment
+        # Update price using continuous adjustment with damping to avoid instability
         price_adjustment = theta_d * excess_demand_ratio + theta_c * unit_cost_change
+        price_adjustment = max(-0.05, min(0.05, price_adjustment))
         self.price = self.price * (1 + price_adjustment)
 
         # Floor price to avoid negative or too low
