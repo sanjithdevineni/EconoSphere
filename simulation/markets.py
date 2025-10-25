@@ -64,20 +64,36 @@ class LaborMarket:
             'market_wage': self.market_wage
         }
 
-    def adjust_wages(self, firms, unemployment_rate):
+    def adjust_wages(self, firms, eta=0.10):
         """
-        Firms adjust wages based on labor market tightness
-        High unemployment -> lower wages
-        Low unemployment -> higher wages
+        Firms adjust wages based on their own labor shortage
+
+        Formula: wage_{j,t+1} = wage_{j,t} * (1 + η * labor_shortage_j)
+
+        where:
+        - labor_shortage_j = max(0, vacancies_j - hires_j) / max(1, vacancies_j)
+        - η (eta): wage adjustment parameter (typically 0.05-0.15)
+
+        If a firm can't fill all its vacancies, it raises wages to attract workers.
         """
         for firm in firms:
-            if unemployment_rate > 0.1:  # High unemployment
-                firm.wage_offered *= 0.98  # Decrease wages 2%
-            elif unemployment_rate < 0.05:  # Low unemployment (tight labor market)
-                firm.wage_offered *= 1.02  # Increase wages 2%
+            # Calculate labor shortage
+            vacancies = firm.labor_demand
+            hires = len(firm.employees)
+            unfilled_vacancies = max(0, vacancies - hires)
 
-            # Floor wage
-            firm.wage_offered = max(500, firm.wage_offered)
+            if vacancies > 0:
+                labor_shortage = unfilled_vacancies / vacancies
+            else:
+                labor_shortage = 0
+
+            # Adjust wage based on shortage
+            wage_adjustment = eta * labor_shortage
+            firm.wage_offered = firm.wage_offered * (1 + wage_adjustment)
+
+            # Minimum wage floor (as index, not absolute dollar amount)
+            min_wage_index = 500  # Base minimum wage
+            firm.wage_offered = max(min_wage_index, firm.wage_offered)
 
 
 class GoodsMarket:
@@ -87,19 +103,29 @@ class GoodsMarket:
     """
 
     def __init__(self):
-        self.market_price = 10  # Average market price
         self.total_demand = 0
         self.total_supply = 0
-        self.price_level = 10
-        self.previous_price_level = 10
+        self.cpi = 10  # Consumer Price Index (weighted average of firm prices)
+        self.previous_cpi = 10
         self.inflation_rate = 0
+        self.price_sensitivity = 1.0  # lambda parameter for price-sensitive allocation
 
-    def collect_demand(self, consumers, price_level):
+    def collect_demand(self, consumers, firms):
         """
-        Aggregate consumer demand at current price level
+        Aggregate consumer demand using firm-level prices
+        Returns dict with total demand value and firm-specific demands
         """
-        self.total_demand = sum(c.consume(price_level) for c in consumers)
-        return self.total_demand
+        # Each consumer allocates budget across firms based on prices
+        firm_demands = {firm.unique_id: 0 for firm in firms}
+
+        for consumer in consumers:
+            consumer_demand = consumer.allocate_budget_across_firms(firms, self.price_sensitivity)
+            for firm_id, quantity in consumer_demand.items():
+                firm_demands[firm_id] += quantity
+
+        # Total demand in quantity terms
+        self.total_demand = sum(firm_demands.values())
+        return firm_demands
 
     def collect_supply(self, firms):
         """
@@ -113,59 +139,78 @@ class GoodsMarket:
         Match supply and demand, determine market price
 
         Process:
-        1. Firms set prices based on previous period's market conditions
-        2. Consumers demand goods at current price
-        3. Market clears, adjust prices for next period
+        1. Firms produce goods
+        2. Firms set prices based on previous period's market conditions
+        3. Consumers allocate budgets across firms based on prices
+        4. Market clears with firm-specific sales
+        5. Compute CPI from firm prices (no separate price level update)
         """
 
-        # Firms produce
+        # 1. Firms produce
         for firm in firms:
             firm.produce()
 
         # Collect total supply
         self.collect_supply(firms)
 
-        # Government spending adds to demand
-        total_demand_with_govt = self.total_demand + (govt_spending / self.price_level)
-
-        # Price adjustment based on supply/demand
-        if self.total_supply > 0:
-            excess_demand = total_demand_with_govt - self.total_supply
-
-            # If demand > supply, prices rise
-            if excess_demand > 0:
-                self.price_level *= 1.03  # 3% increase
-            # If supply > demand, prices fall
-            elif excess_demand < 0:
-                self.price_level *= 0.97  # 3% decrease
-
-        # Floor price
-        self.price_level = max(1, self.price_level)
-
-        # Calculate inflation
-        self.inflation_rate = (self.price_level - self.previous_price_level) / self.previous_price_level
-        self.previous_price_level = self.price_level
-
-        # Firms update their prices
+        # 2. Firms update their prices based on market conditions
+        import config
         for firm in firms:
-            firm.set_price(total_demand_with_govt, self.total_supply)
+            firm.set_price(
+                self.total_demand if self.total_demand > 0 else 100,
+                self.total_supply,
+                theta_d=config.PRICE_DEMAND_SENSITIVITY,
+                theta_c=config.PRICE_COST_SENSITIVITY
+            )
 
-        # Allocate goods to consumers (simplified: proportional rationing)
-        actual_sales = min(total_demand_with_govt, self.total_supply)
+        # 3. Collect demand with firm-level prices
+        firm_demands = self.collect_demand(consumers, firms)
 
-        # Firms sell goods and earn revenue
+        # Add government spending (allocated proportionally by firm output)
+        if govt_spending > 0 and firms:
+            avg_price = sum(f.price for f in firms) / len(firms)
+            govt_quantity = govt_spending / max(avg_price, 1)
+
+            for firm in firms:
+                if self.total_supply > 0:
+                    firm_share = firm.production / self.total_supply
+                    firm_demands[firm.unique_id] += govt_quantity * firm_share
+
+        # 4. Firms sell goods (short-side rule at firm level)
+        total_sales_value = 0
+        total_sales_quantity = 0
+
         for firm in firms:
-            # Each firm sells proportional to their production
-            if self.total_supply > 0:
-                firm_sales = (firm.production / self.total_supply) * actual_sales
-                firm.sell_goods(firm_sales)
+            demand_for_firm = firm_demands.get(firm.unique_id, 0)
+            actual_sold = firm.sell_goods(demand_for_firm)
+            total_sales_value += actual_sold * firm.price
+            total_sales_quantity += actual_sold
+
+        # 5. Compute CPI as weighted average of firm prices
+        if firms:
+            # Weight by production share
+            total_production = sum(f.production for f in firms)
+            if total_production > 0:
+                self.cpi = sum(f.price * (f.production / total_production) for f in firms)
+            else:
+                self.cpi = sum(f.price for f in firms) / len(firms)
+
+        # Calculate inflation from CPI
+        if self.previous_cpi > 0:
+            self.inflation_rate = (self.cpi - self.previous_cpi) / self.previous_cpi
+        else:
+            self.inflation_rate = 0
+        self.previous_cpi = self.cpi
+
+        # Update total demand for next period
+        total_demand_quantity = sum(firm_demands.values())
 
         return {
-            'total_demand': total_demand_with_govt,
+            'total_demand': total_demand_quantity,
             'total_supply': self.total_supply,
-            'price_level': self.price_level,
+            'cpi': self.cpi,
             'inflation_rate': self.inflation_rate,
-            'market_cleared': actual_sales
+            'market_cleared': total_sales_quantity
         }
 
     def adjust_firm_prices(self, firms):

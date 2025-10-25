@@ -21,7 +21,9 @@ class EconomyModel(Model):
         self,
         num_consumers=config.NUM_CONSUMERS,
         num_firms=config.NUM_FIRMS,
-        initial_tax_rate=config.INITIAL_TAX_RATE,
+        initial_vat_rate=config.INITIAL_VAT_RATE,
+        initial_payroll_rate=config.INITIAL_PAYROLL_RATE,
+        initial_corporate_rate=config.INITIAL_CORPORATE_RATE,
         initial_interest_rate=config.INITIAL_INTEREST_RATE,
         initial_welfare=config.INITIAL_WELFARE_PAYMENT,
         initial_govt_spending=config.INITIAL_GOVT_SPENDING
@@ -44,9 +46,10 @@ class EconomyModel(Model):
         self.government = None
         self.central_bank = None
 
-        self._create_agents(initial_tax_rate, initial_interest_rate, initial_welfare, initial_govt_spending)
+        self._create_agents(initial_vat_rate, initial_payroll_rate, initial_corporate_rate,
+                           initial_interest_rate, initial_welfare, initial_govt_spending)
 
-    def _create_agents(self, tax_rate, interest_rate, welfare, govt_spending):
+    def _create_agents(self, vat_rate, payroll_rate, corporate_rate, interest_rate, welfare, govt_spending):
         """Initialize all agents"""
 
         # Create consumers
@@ -78,10 +81,12 @@ class EconomyModel(Model):
                 unique_id=self.num_consumers + i,
                 model=self,
                 initial_capital=capital,
-                productivity=config.FIRM_PRODUCTIVITY
+                productivity=config.FIRM_PRODUCTIVITY,
+                gamma=config.FIRM_GAMMA
             )
             firm.wage_offered = config.INITIAL_WAGE
             firm.price = config.INITIAL_PRICE_LEVEL
+            firm.depreciation_rate = config.FIRM_DEPRECIATION_RATE
             self.firms.append(firm)
             self.schedule.add(firm)
 
@@ -89,7 +94,9 @@ class EconomyModel(Model):
         self.government = Government(
             unique_id=self.num_consumers + self.num_firms,
             model=self,
-            tax_rate=tax_rate,
+            vat_rate=vat_rate,
+            payroll_rate=payroll_rate,
+            corporate_rate=corporate_rate,
             welfare_payment=welfare,
             govt_spending=govt_spending
         )
@@ -121,34 +128,37 @@ class EconomyModel(Model):
         """
 
         # 1. Firms determine labor demand
-        interest_rate = self.central_bank.get_borrowing_cost()
         for firm in self.firms:
             # Estimate demand based on previous period
             expected_demand = self.goods_market.total_demand if self.goods_market.total_demand > 0 else 100
-            firm.determine_labor_demand(expected_demand, interest_rate)
+            firm.determine_labor_demand(expected_demand)
 
         # 2. Clear labor market
         labor_results = self.labor_market.clear_market(self.consumers, self.firms)
 
         # 3. Government fiscal policy
-        self.government.collect_taxes(self.consumers)
+        self.government.collect_taxes(self.consumers, self.firms)
         self.government.distribute_welfare(self.consumers)
 
-        # 4. Consumers consume (creates demand)
-        self.goods_market.collect_demand(self.consumers, self.goods_market.price_level)
-
-        # 5. Clear goods market
+        # 4. Clear goods market (consumers demand goods, firms sell, prices adjust)
         govt_demand = self.government.government_spending_stimulus(self)
         market_results = self.goods_market.clear_market(self.consumers, self.firms, govt_demand)
+
+        # 5. Get interest rate for investment decisions
+        interest_rate = self.central_bank.get_borrowing_cost()
 
         # 6. Firms pay wages and calculate profits
         for firm in self.firms:
             firm.pay_wages()
             firm.calculate_profit()
-            firm.make_investment_decision(interest_rate)
+            firm.make_investment_decision(
+                interest_rate,
+                xi=config.FIRM_INVESTMENT_SHARE,
+                kappa=config.FIRM_PRODUCTIVITY_GROWTH_COEFF
+            )
 
-        # 7. Adjust wages based on unemployment
-        self.labor_market.adjust_wages(self.firms, labor_results['unemployment_rate'])
+        # 7. Adjust wages based on firm-level labor shortages
+        self.labor_market.adjust_wages(self.firms)
 
         # 8. Central bank policy (if auto mode)
         if self.central_bank.auto_policy:
@@ -201,7 +211,9 @@ class EconomyModel(Model):
         self.firms = []
         self.schedule = RandomActivation(self)
         self._create_agents(
-            config.INITIAL_TAX_RATE,
+            config.INITIAL_VAT_RATE,
+            config.INITIAL_PAYROLL_RATE,
+            config.INITIAL_CORPORATE_RATE,
             config.INITIAL_INTEREST_RATE,
             config.INITIAL_WELFARE_PAYMENT,
             config.INITIAL_GOVT_SPENDING

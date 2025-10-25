@@ -27,44 +27,69 @@ class Consumer(Agent):
         self.welfare_received = 0
 
     def receive_income(self, amount):
-        """Receive income from employment"""
+        """Receive income from employment (stored but not added to wealth yet)"""
         self.income = amount
-        self.wealth += amount
 
     def receive_welfare(self, amount):
-        """Receive welfare payment from government"""
+        """Receive welfare payment from government (stored but not added to wealth yet)"""
         self.welfare_received = amount
-        self.wealth += amount
 
-    def pay_taxes(self, tax_rate):
-        """Pay taxes on income"""
-        if self.income > 0:
-            self.taxes_paid = self.income * tax_rate
-            self.wealth -= self.taxes_paid
-            return self.taxes_paid
-        return 0
-
-    def consume(self, price_level):
+    def allocate_budget_across_firms(self, firms, price_sensitivity=1.0):
         """
-        Decide how much to consume based on wealth and propensity to consume
-        Returns: quantity demanded
+        Allocate consumption budget across firms based on their prices
+
+        Formula:
+            share_ij = exp(-lambda * price_j) / sum_k exp(-lambda * price_k)
+            quantity_ij = (share_ij * consumption_budget) / price_j
+
+        Args:
+            firms: list of Firm objects
+            price_sensitivity: lambda parameter (higher = more price-sensitive)
+
+        Returns:
+            dict mapping firm_id -> quantity demanded from that firm
         """
-        # Consumption budget (after taxes, plus any savings)
-        disposable_income = self.income - self.taxes_paid + self.welfare_received
+        # Total cash available for spending (no income tax, VAT is paid at point of sale)
+        cash_on_hand = self.wealth + self.income + self.welfare_received
+        cash_on_hand = max(0, cash_on_hand)
 
-        # Consume a portion of disposable income
-        consumption_budget = disposable_income * self.propensity_to_consume
+        # Consumption budget based on MPC
+        consumption_budget = self.propensity_to_consume * cash_on_hand
+        consumption_budget = min(consumption_budget, cash_on_hand)
 
-        # Can't spend more than wealth
-        consumption_budget = min(consumption_budget, self.wealth)
+        self.consumption = consumption_budget
 
-        # Quantity demanded at current price level
-        if price_level > 0:
-            quantity_demanded = consumption_budget / price_level
-            self.consumption = consumption_budget
-            self.wealth -= consumption_budget
-            return quantity_demanded
-        return 0
+        # If no budget or no firms, return empty demand
+        if consumption_budget <= 0 or not firms:
+            # Still update wealth
+            self.wealth = self.wealth + self.income + self.welfare_received - consumption_budget
+            return {}
+
+        # Compute price-sensitive shares using exponential model
+        # exp(-lambda * price) gives higher weight to lower prices
+        import numpy as np
+        price_weights = {}
+        total_weight = 0
+
+        for firm in firms:
+            if firm.price > 0:
+                weight = np.exp(-price_sensitivity * firm.price)
+                price_weights[firm.unique_id] = weight
+                total_weight += weight
+
+        # Allocate budget across firms
+        firm_demands = {}
+        if total_weight > 0:
+            for firm in firms:
+                share = price_weights.get(firm.unique_id, 0) / total_weight
+                spending_on_firm = share * consumption_budget
+                quantity = spending_on_firm / max(firm.price, 0.01)  # avoid division by zero
+                firm_demands[firm.unique_id] = quantity
+
+        # Update wealth: add income and welfare, subtract consumption
+        self.wealth = self.wealth + self.income + self.welfare_received - consumption_budget
+
+        return firm_demands
 
     def seek_employment(self):
         """

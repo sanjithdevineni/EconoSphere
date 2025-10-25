@@ -15,39 +15,61 @@ This document describes all the mathematical formulas and economic theory implem
 
 ## Consumer Behavior
 
-### 1. Disposable Income
-**Location**: `agents/consumer.py:53`
+### 1. Net Income
+**Location**: `agents/consumer.py:54`
 
 ```
-Disposable Income = Income - Taxes + Welfare Received
+Net Income = Income - Taxes
+
+where:
+Taxes = Income × Tax Rate
 ```
 
 **Where**:
 - Income = Wage from employment
-- Taxes = Income × Tax Rate
+- Taxes = Income × Tax Rate (proportional income tax)
+
+**Theory**: Income after taxes, before transfers.
+
+---
+
+### 2. Cash on Hand
+**Location**: `agents/consumer.py:57`
+
+```
+Cash on Hand = Wealth(t) + Net Income + Welfare Received
+```
+
+**Where**:
+- Wealth(t) = Accumulated savings from previous periods
+- Net Income = Income - Taxes
 - Welfare = Government transfer payment (if unemployed)
 
-**Theory**: Standard definition of income available for consumption/saving after taxes and transfers.
+**Theory**: Total liquidity available for consumption. This represents all financial resources the consumer can access in the current period.
 
 ---
 
-### 2. Consumption Function (Keynesian)
-**Location**: `agents/consumer.py:56`
+### 3. Consumption Function (Keynesian)
+**Location**: `agents/consumer.py:63`
 
 ```
-Consumption Budget = Disposable Income × MPC
+Consumption Budget = MPC × Cash on Hand
 
 where MPC = Marginal Propensity to Consume (default: 0.7)
+
+Constraint: Consumption Budget ≤ Cash on Hand
 ```
 
-**Theory**: Based on Keynes' consumption function. Consumers spend a fixed proportion of their disposable income.
+**Theory**: Based on Keynes' consumption function, extended to include wealth effects. Consumers spend a fixed proportion of their total available resources (not just current income).
 
-**Real Example**: If MPC = 0.7, a consumer with $1000 disposable income will spend $700.
+**Real Example**: If MPC = 0.7, wealth = $5000, net income = $1000, welfare = $0:
+- Cash on Hand = $5000 + $1000 + $0 = $6000
+- Consumption Budget = 0.7 × $6000 = $4200
 
 ---
 
-### 3. Quantity Demanded
-**Location**: `agents/consumer.py:63`
+### 4. Quantity Demanded
+**Location**: `agents/consumer.py:70`
 
 ```
 Quantity Demanded = Consumption Budget / Price Level
@@ -55,43 +77,52 @@ Quantity Demanded = Consumption Budget / Price Level
 
 **Theory**: Demand curve - at higher prices, consumers demand fewer goods for the same budget.
 
-**Budget Constraint**:
-```
-Consumption Budget ≤ Current Wealth
-```
-
-Consumers cannot spend more than they have (no borrowing in current version).
-
 ---
 
-### 4. Wealth Dynamics
-**Location**: `agents/consumer.py:32, 65`
+### 5. Wealth Dynamics
+**Location**: `agents/consumer.py:74`
 
 ```
+Wealth(t+1) = Wealth(t) + Net Income + Welfare - Consumption
+
+or equivalently:
+
 Wealth(t+1) = Wealth(t) + Income - Taxes + Welfare - Consumption
 ```
 
-**Theory**: Stock-flow consistency. Wealth accumulates from unspent income.
+**Theory**: Stock-flow consistency. Wealth accumulates from unspent income and transfers. Note that income and welfare are NOT double-counted - they flow into wealth only once after consumption decisions are made.
 
 ---
 
 ## Firm Behavior
 
-### 1. Production Function (Linear)
-**Location**: `agents/firm.py:72`
+### 1. Production Function (Diminishing Returns)
+**Location**: `agents/firm.py:79`
 
 ```
-Production = Number of Workers × Productivity
+Production = Productivity × (Labor ^ gamma)
 
-Q = L × α
+Q = A × L^γ
 ```
 
 **Where**:
 - Q = Output (quantity produced)
+- A = Total Factor Productivity (TFP, default: 2.0)
 - L = Labor (number of workers)
-- α = Productivity parameter (default: 2.0)
+- γ = Returns to scale parameter (default: 0.7, typical range: 0.6-0.8)
 
-**Theory**: Simplified linear production function. In reality, production functions often have diminishing returns (Cobb-Douglas: Q = A × L^α × K^β), but we use linear for simplicity.
+**Theory**: Production function with diminishing marginal returns to labor. This is similar to a Cobb-Douglas production function but simplified to labor only. Each additional worker adds less output than the previous one.
+
+**Example**: With A = 2.0 and γ = 0.7:
+- 1 worker: Q = 2.0 × 1^0.7 = 2.0 units
+- 10 workers: Q = 2.0 × 10^0.7 = 10.0 units (not 20 - diminishing returns!)
+- 100 workers: Q = 2.0 × 100^0.7 = 50.1 units
+
+**Marginal Product of Labor**:
+```
+MPL = dQ/dL = A × γ × L^(γ-1)
+```
+This decreases as L increases when γ < 1.
 
 ---
 
@@ -116,18 +147,41 @@ Profitability Factor = 1.2 if profit > 0, else 0.8
 
 ---
 
-### 3. Price Adjustment (Supply/Demand)
-**Location**: `agents/firm.py:82-88`
+### 3. Price Adjustment (Adaptive Pricing)
+**Location**: `agents/firm.py:85-127`
 
 ```
-If Demand/Supply > 1.1:
-    Price(t+1) = Price(t) × 1.05   (5% increase)
+Price(t+1) = Price(t) × [1 + θ_d × Excess Demand Ratio + θ_c × Unit Cost Change]
 
-If Demand/Supply < 0.9:
-    Price(t+1) = Price(t) × 0.95   (5% decrease)
+where:
+
+Excess Demand Ratio = (Demand - Supply) / max(Supply, 1)
+
+Unit Cost = (Number of Workers × Wage) / Production
+
+Unit Cost Change = (Unit Cost(t) - Unit Cost(t-1)) / Unit Cost(t-1)
+
+θ_d = Demand sensitivity parameter (default: 0.1, typical: 0.05-0.2)
+θ_c = Cost sensitivity parameter (default: 0.1, typical: 0.05-0.2)
 ```
 
-**Theory**: Tatonnement process (Walrasian auction). Firms raise prices when demand exceeds supply, lower when supply exceeds demand.
+**Theory**: Continuous adaptive pricing with two components:
+1. **Demand-pull**: Prices rise when demand exceeds supply (excess demand > 0)
+2. **Cost-push**: Prices rise when unit costs increase (wage inflation, lower productivity)
+
+This combines Walrasian tatonnement with markup pricing theory.
+
+**Example**: Suppose θ_d = 0.1, θ_c = 0.1, current price = $10
+- Scenario 1: Demand = 120, Supply = 100, no cost change
+  - Excess Demand Ratio = 20/100 = 0.2
+  - Price adjustment = 0.1 × 0.2 + 0.1 × 0 = 0.02 (2%)
+  - New Price = $10 × 1.02 = $10.20
+
+- Scenario 2: Balanced demand, but wages rose 10%
+  - Excess Demand Ratio = 0
+  - Unit Cost Change = 0.1
+  - Price adjustment = 0.1 × 0 + 0.1 × 0.1 = 0.01 (1%)
+  - New Price = $10 × 1.01 = $10.10
 
 ---
 
@@ -146,21 +200,47 @@ Profit = Revenue - Costs
 
 ---
 
-### 5. Investment Function
-**Location**: `agents/firm.py:121-127`
+### 5. Investment Function and Capital Dynamics
+**Location**: `agents/firm.py:151-182`
 
 ```
+Step 1: Capital Depreciation
+Capital(t) = max(0, (1 - δ) × Capital(t-1))
+
+where δ = Depreciation Rate (default: 0.05 = 5% per period)
+
+Step 2: Investment Decision
 If Profit > 0 AND Interest Rate < 8%:
-    Investment = Profit × 0.1
-    Productivity(t+1) = Productivity(t) × 1.01
+    Investment = ξ × Profit
+
+    Capital(t+1) = Capital(t) + Investment
+
+    Productivity(t+1) = Productivity(t) × [1 + κ × (Investment / Capital(t))]
+
+where:
+ξ = Investment share (default: 0.1 = 10% of profit)
+κ = Productivity growth coefficient (default: 0.1)
 ```
 
-**Theory**: Firms reinvest profits when profitable and interest rates are low. Investment increases productivity (technological improvement).
+**Theory**:
+1. **Capital Depreciation**: Physical capital wears out over time (equipment breaks, buildings deteriorate)
+2. **Investment**: Profitable firms reinvest when borrowing costs are low
+3. **Endogenous Productivity Growth**: Productivity grows proportional to the investment-to-capital ratio (embodied technological change)
 
-**Capital Accumulation**:
+**Example**: Firm with Capital = $100k, Profit = $10k, Interest Rate = 5%
+- Step 1: Depreciation reduces capital to (1 - 0.05) × $100k = $95k
+- Step 2: Investment = 0.1 × $10k = $1k
+- New Capital = $95k + $1k = $96k
+- Investment Ratio = $1k / $96k = 0.0104
+- Productivity Growth = 0.1 × 0.0104 = 0.00104 (0.104%)
+- If old productivity = 2.0, new = 2.0 × 1.00104 = 2.0021
+
+**Capital Accounting**:
 ```
-Capital(t+1) = Capital(t) + Profit + Investment - Wages
+Capital(t+1) = (1 - δ) × Capital(t) + Profit + Investment - Wages
 ```
+
+This creates a **Solow-like growth model** at the firm level where sustained investment is needed to maintain capital stock against depreciation.
 
 ---
 
@@ -468,72 +548,104 @@ Workers are shuffled randomly before matching to jobs
 | Interest Rate | r | 5% | 0-10% | Higher → Less investment → Higher unemployment |
 | Welfare Payment | W | $500 | $0-$2000 | Higher → Higher demand → Lower inequality |
 | MPC | c | 0.7 | 0.5-0.9 | Higher → More consumption → Higher GDP |
-| Productivity | α | 2.0 | 1.0-5.0 | Higher → More output per worker |
+| Productivity (TFP) | A | 2.0 | 1.0-5.0 | Higher → More output per worker |
+| Returns to Scale | γ | 0.7 | 0.6-0.8 | Higher → Less diminishing returns |
+| Depreciation Rate | δ | 5% | 2-10% | Higher → More investment needed to maintain capital |
+| Investment Share | ξ | 10% | 5-20% | Higher → Faster capital growth |
+| Productivity Growth | κ | 0.1 | 0.05-0.2 | Higher → Faster tech progress from investment |
+| Price Demand Sensitivity | θ_d | 0.1 | 0.05-0.2 | Higher → Prices more volatile with demand |
+| Price Cost Sensitivity | θ_c | 0.1 | 0.05-0.2 | Higher → Stronger cost-push inflation |
 | Govt Spending | G | $10k | $0-$50k | Higher → Higher AD → Lower unemployment |
 
 ---
 
 ## Model Limitations
 
-### What's Simplified:
+### What's Implemented (Realistic):
 
-1. **Linear Production**: Real production functions have diminishing returns (should be Cobb-Douglas: Q = A L^α K^β)
+1. ✅ **Diminishing Returns Production**: Q = A × L^γ with γ < 1
+2. ✅ **Capital Accumulation with Depreciation**: K(t+1) = (1-δ)K(t) + I(t)
+3. ✅ **Endogenous Productivity Growth**: Productivity grows with investment
+4. ✅ **Adaptive Pricing**: Continuous price adjustment with demand-pull and cost-push
+5. ✅ **Wealth Effects on Consumption**: Consumers use both wealth and income
 
-2. **No Capital Accumulation**: Firms don't accumulate capital stock explicitly (K is static)
+### What's Still Simplified:
 
-3. **Perfect Information**: Agents know market conditions instantly (no information delays)
+1. **No Capital in Production Function**: Production only depends on labor (Q = A × L^γ), not capital. Should be Cobb-Douglas: Q = A × L^α × K^β
 
-4. **No Banking Sector**: No fractional reserve banking, credit creation, or bank runs
+2. **Perfect Information**: Agents know market conditions instantly (no information delays)
 
-5. **Closed Economy**: No imports, exports, or exchange rates
+3. **No Banking Sector**: No fractional reserve banking, credit creation, or bank runs
 
-6. **Homogeneous Goods**: All firms produce identical goods (no differentiation)
+4. **Closed Economy**: No imports, exports, or exchange rates
 
-7. **No Expectations**: Agents don't form expectations about future (adaptive vs. rational)
+5. **Homogeneous Goods**: All firms produce identical goods (no differentiation)
 
-8. **No Price Stickiness**: Prices adjust instantly (in reality, wages/prices are sticky)
+6. **No Expectations**: Agents don't form forward-looking expectations (adaptive vs. rational)
+
+7. **Partial Price Stickiness**: Prices adjust with some smoothing, but still more flexible than reality
+
+8. **No Credit Market**: Consumers cannot borrow, firms don't take loans (only self-finance)
 
 ---
 
 ## Extensions for Advanced Versions
 
-### Possible Improvements:
+### Already Implemented (v2.0):
 
-1. **Cobb-Douglas Production**:
+1. ✅ **Diminishing Returns Production**: Q = A × L^γ
+2. ✅ **Endogenous Investment with Depreciation**: K(t+1) = (1-δ)K(t) + I(t)
+3. ✅ **Productivity Growth**: A(t+1) = A(t) × [1 + κ × I/K]
+4. ✅ **Adaptive Price Adjustment**: Continuous with demand and cost components
+
+### Possible Future Improvements:
+
+1. **Full Cobb-Douglas Production** (add capital to production function):
    ```
    Q = A × L^α × K^β
    where α + β = 1 (constant returns to scale)
    ```
 
-2. **Endogenous Investment**:
+2. **Rational Expectations**:
    ```
-   Investment = f(Profit, Interest Rate, Expected Return)
-   K(t+1) = (1 - δ)K(t) + I(t)
-   where δ = depreciation rate
-   ```
+   Expected_Inflation(t+1) = E[Inflation(t+1) | Information(t)]
 
-3. **Rational Expectations**:
-   ```
-   Expected Inflation = Actual Inflation + ε
+   Simple version:
+   Expected_Inflation = Actual_Inflation + ε
    where ε ~ Normal(0, σ²)
    ```
 
-4. **Phillips Curve (Expectations-Augmented)**:
+3. **Phillips Curve (Expectations-Augmented)**:
    ```
-   Inflation = Expected Inflation - β(Unemployment - Natural Unemployment)
+   Inflation = Expected_Inflation - β(Unemployment - Natural_Unemployment)
    ```
 
-5. **Solow Growth Model**:
+4. **Banking Sector**:
    ```
-   Y = A × K^α × L^(1-α)
-   dK/dt = sY - δK
-   where s = savings rate
+   Money_Supply = Base_Money × Money_Multiplier
+   Money_Multiplier = 1 / Reserve_Ratio
+   Loans = Deposits × (1 - Reserve_Ratio)
+   ```
+
+5. **Credit Market** (consumer and firm borrowing):
+   ```
+   Consumer_Debt(t+1) = Consumer_Debt(t) + Borrowing - Repayment
+   Constraint: Debt_Service_Ratio < 0.4 (40% of income)
    ```
 
 6. **IS-LM Framework**:
    ```
    IS: Y = C(Y - T) + I(r) + G
    LM: M/P = L(Y, r)
+
+   Equilibrium: IS = LM determines Y and r
+   ```
+
+7. **Heterogeneous Firms** (different productivity levels):
+   ```
+   Productivity_i ~ LogNormal(μ, σ)
+
+   Market dynamics favor more productive firms
    ```
 
 ---
@@ -561,21 +673,29 @@ Workers are shuffled randomly before matching to jobs
 | t | Time period |
 | L | Labor (number of workers) |
 | K | Capital stock |
-| Q | Quantity produced |
+| Q | Quantity produced / Output |
 | P | Price level |
 | w | Wage rate |
 | r | Interest rate |
 | τ | Tax rate |
-| α | Productivity parameter |
-| β | Parameter |
+| A | Total Factor Productivity (TFP) |
+| γ | Returns to scale parameter (gamma) |
+| δ | Depreciation rate (delta) |
+| ξ | Investment share (xi) |
+| κ | Productivity growth coefficient (kappa) |
+| θ_d | Price demand sensitivity (theta_d) |
+| θ_c | Price cost sensitivity (theta_c) |
+| c / MPC | Marginal Propensity to Consume |
 | C | Consumption |
 | I | Investment |
 | G | Government spending |
 | Y | GDP / Income |
-| π | Inflation rate |
+| π | Inflation rate (pi) |
 | u | Unemployment rate |
 | Σ | Summation |
 | ~ | "Distributed as" (statistics) |
+| E[·] | Expected value |
+| MPL | Marginal Product of Labor |
 
 ---
 
