@@ -417,32 +417,8 @@ Lower rates
 - [ ] Crisis buttons trigger events
 - [ ] Auto-policy adjusts rates
 
-## Hackathon Success Tips
-
-### What Judges Love
-1. **Live demo**: Real-time interaction is impressive
-2. **Clear impact**: Show before/after policy changes
-3. **Technical depth**: Explain agent-based modeling
-4. **Practical use**: Business strategy testing, education
-
 ### Demo Script
 1. "This simulates a real economy with autonomous agents"
 2. Show baseline → Adjust tax → Watch impact
 3. Trigger recession → Implement response → Show recovery
 4. "Use cases: Policy testing, business strategy, education"
-
-### Potential Questions & Answers
-
-**Q: How is this different from a spreadsheet model?**
-A: Agent-based models capture emergent behavior - the interactions between agents create realistic dynamics you can't get from equations alone.
-
-**Q: How accurate is it?**
-A: It captures qualitative dynamics well (higher taxes → lower growth). For quantitative accuracy, you'd calibrate against real data using our World Bank integration.
-
-**Q: What's the business application?**
-A: Test pricing strategies, market entry scenarios, competitive dynamics in a simulated market before risking real capital.
-
-**Q: Could this scale to millions of agents?**
-A: Current Python implementation wouldn't scale that far, but the architecture could be ported to a distributed system (Spark, Ray) for large-scale simulation.
-
-Good luck!
