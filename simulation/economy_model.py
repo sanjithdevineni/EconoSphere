@@ -63,6 +63,7 @@ class EconomyModel(Model):
         self.goods_market = GoodsMarket()
         self.metrics = MetricsCalculator()
         self.narrator = None
+        self._narrative_cooldown = 0
         if getattr(config, "ENABLE_AI_NARRATIVE", False):
             self.narrator = AINarrator()
 
@@ -214,11 +215,12 @@ class EconomyModel(Model):
             self.goods_market
         )
 
-        if self.narrator is not None:
+        if self.narrator is not None and self._narrative_cooldown > 0:
             history = self.metrics.get_history()
             narrative = self.narrator.generate(current_metrics, history)
             if narrative:
                 current_metrics['narrative'] = narrative
+            self._narrative_cooldown -= 1
 
         # Advance time
         self.current_step += 1
@@ -237,6 +239,13 @@ class EconomyModel(Model):
     def get_current_state(self):
         """Get current state of the economy"""
         return self.metrics.get_latest_metrics()
+
+    def _arm_narrative(self):
+        if self.narrator is not None:
+            steps = getattr(config, 'NARRATIVE_COOLDOWN_STEPS', 0)
+            if steps:
+                self._narrative_cooldown = max(self._narrative_cooldown, steps)
+
 
     def reset(self):
         """Reset the simulation to initial conditions"""
@@ -261,22 +270,27 @@ class EconomyModel(Model):
     def set_tax_rate(self, rate):
         """Update government tax rate"""
         self.government.set_tax_rate(rate)
+        self._arm_narrative()
 
     def set_interest_rate(self, rate):
         """Update central bank interest rate"""
         self.central_bank.set_interest_rate(rate)
+        self._arm_narrative()
 
     def set_welfare_payment(self, amount):
         """Update welfare payment"""
         self.government.set_welfare_payment(amount)
+        self._arm_narrative()
 
     def set_govt_spending(self, amount):
         """Update government spending"""
         self.government.set_govt_spending(amount)
+        self._arm_narrative()
 
     def enable_auto_monetary_policy(self, enabled):
         """Enable/disable automatic monetary policy"""
         self.central_bank.enable_auto_policy(enabled)
+        self._arm_narrative()
 
     def trigger_crisis(self, crisis_type):
         """Trigger a pre-configured crisis scenario"""
@@ -290,6 +304,7 @@ class EconomyModel(Model):
                 firm.labor_demand = max(1, int(firm.labor_demand * 0.7))
             self.goods_market.smoothed_demand *= 0.7
             self.central_bank.crisis_response('recession')
+            self._arm_narrative()
 
         elif crisis_type == 'inflation':
             # Demand surge and monetary tightening to fight inflation
@@ -302,3 +317,4 @@ class EconomyModel(Model):
                 firm.labor_demand = max(1, int(firm.labor_demand * 1.15))
             self.goods_market.smoothed_demand *= 1.2
             self.central_bank.crisis_response('inflation')
+            self._arm_narrative()
