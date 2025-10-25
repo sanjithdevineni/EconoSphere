@@ -24,6 +24,10 @@ INITIAL_GOVT_SPENDING = 3000
 
 # Central Bank Parameters
 INITIAL_INTEREST_RATE = 0.05  # 5%
+
+# Demo & AI Features
+ENABLE_AI_NARRATIVE = False
+
 INFLATION_TARGET = 0.02  # 2%
 RESERVE_RATIO = 0.10  # 10%
 
@@ -31,6 +35,7 @@ RESERVE_RATIO = 0.10  # 10%
 INITIAL_WAGE = 1000
 INITIAL_PRICE_LEVEL = 10
 CONSUMER_PROPENSITY_TO_CONSUME = 0.58  # Marginal propensity to consume (MPC)
+CONSUMER_WEALTH_SPEND_RATE = 0.025  # Share of wealth households spend each step
 
 # Labor Adjustment Parameters
 LABOR_ADJUSTMENT_RATE = 0.6  # Max fractional change in firm workforce per period

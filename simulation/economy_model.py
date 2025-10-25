@@ -8,6 +8,7 @@ from simulation.schedulers import RandomActivation
 from agents import Consumer, Firm, Government, CentralBank
 from simulation.markets import LaborMarket, GoodsMarket
 from simulation.metrics import MetricsCalculator
+from narrative.ai_narrator import AINarrator
 import config
 
 
@@ -61,6 +62,9 @@ class EconomyModel(Model):
         self.labor_market = LaborMarket(rng=self.random)
         self.goods_market = GoodsMarket()
         self.metrics = MetricsCalculator()
+        self.narrator = None
+        if getattr(config, "ENABLE_AI_NARRATIVE", False):
+            self.narrator = AINarrator()
 
         # Create agents
         self.consumers = []
@@ -209,6 +213,12 @@ class EconomyModel(Model):
             self.central_bank,
             self.goods_market
         )
+
+        if self.narrator is not None:
+            history = self.metrics.get_history()
+            narrative = self.narrator.generate(current_metrics, history)
+            if narrative:
+                current_metrics['narrative'] = narrative
 
         # Advance time
         self.current_step += 1

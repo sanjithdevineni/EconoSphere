@@ -7,8 +7,14 @@ from simulation.economy_model import EconomyModel
 import config
 
 
+def _print_narrative(metrics):
+    narrative = metrics.get("narrative") if isinstance(metrics, dict) else None
+    if narrative:
+        print(f"      📰 {narrative}")
+
+
 def test_basic_simulation():
-    """Test basic simulation functionality"""
+    """Test basic simulation functionality."""
     print("=" * 60)
     print("Testing MacroEcon Simulator")
     print("=" * 60)
@@ -24,9 +30,12 @@ def test_basic_simulation():
     print("\n2. Running simulation for 10 steps...")
     for i in range(10):
         metrics = model.step()
-        print(f"   Step {i+1}: GDP=${metrics['gdp']:,.0f}, "
-              f"Unemployment={metrics['unemployment']:.1f}%, "
-              f"Inflation={metrics['inflation']:.2f}%")
+        print(
+            f"   Step {i + 1}: GDP=${metrics['gdp']:,.0f}, "
+            f"Unemployment={metrics['unemployment']:.1f}%, "
+            f"Inflation={metrics['inflation']:.2f}%"
+        )
+        _print_narrative(metrics)
 
     print("\n3. Testing policy changes...")
 
@@ -42,16 +51,22 @@ def test_basic_simulation():
     print("\n4. Running 5 more steps with new policies...")
     for i in range(5):
         metrics = model.step()
-        print(f"   Step {i+1}: GDP=${metrics['gdp']:,.0f}, "
-              f"Unemployment={metrics['unemployment']:.1f}%")
+        print(
+            f"   Step {i + 1}: GDP=${metrics['gdp']:,.0f}, "
+            f"Unemployment={metrics['unemployment']:.1f}%"
+        )
+        _print_narrative(metrics)
 
     print("\n5. Testing crisis scenario...")
     model.trigger_crisis('recession')
     print("   [OK] Triggered recession")
 
     metrics = model.step()
-    print(f"   After crisis: Unemployment={metrics['unemployment']:.1f}%, "
-          f"Interest Rate={metrics['interest_rate']:.2f}%")
+    print(
+        f"   After crisis: Unemployment={metrics['unemployment']:.1f}%, "
+        f"Interest Rate={metrics['interest_rate']:.2f}%"
+    )
+    _print_narrative(metrics)
 
     print("\n" + "=" * 60)
     print("All tests passed! [OK]")
