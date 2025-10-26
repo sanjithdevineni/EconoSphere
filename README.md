@@ -1,3 +1,4 @@
+![](Logo.png)
 # EconoSphere - Macroeconomic Simulator
 
 ### Watch the economy ripple with every decision.
