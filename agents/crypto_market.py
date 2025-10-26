@@ -112,8 +112,12 @@ class CryptoMarket:
         # === ADOPTION DYNAMICS ===
 
         # 5. NETWORK EFFECTS
-        # More holders → more valuable (Metcalfe's Law)
-        network_effect = self.adoption_rate * self.adoption_momentum
+        # More holders → more valuable (Metcalfe's Law with diminishing returns)
+        # Use logarithmic scaling to prevent exponential explosion
+        # Add baseline support from "true believers" who never sell
+        baseline_adoption = 0.01  # 1% baseline
+        effective_adoption = max(baseline_adoption, self.adoption_rate)
+        network_effect = math.log(1 + effective_adoption * 100) * self.adoption_momentum * 0.01
 
         # 6. GOVERNMENT LEGITIMACY BOOST
         # If government holds crypto, it legitimizes it (HUGE narrative boost!)
@@ -153,14 +157,22 @@ class CryptoMarket:
             random_shock           # Volatility
         )
 
+        # === MEAN REVERSION ===
+        # Prevent consistent trending by adding reversion to fundamental value
+        fundamental_price = 50000  # Baseline fundamental value
+        price_deviation = (self.price - fundamental_price) / fundamental_price
+        mean_reversion = -price_deviation * 0.05  # 5% pull back to fundamental
+
+        total_price_change += mean_reversion
+
         # Apply price change (with bounds to prevent explosion)
-        max_daily_change = 0.5  # Max 50% daily move
+        max_daily_change = 0.10  # Max 10% daily move (more realistic)
         total_price_change = max(-max_daily_change, min(max_daily_change, total_price_change))
 
         self.price *= (1 + total_price_change)
 
-        # Floor price (can't go below $1)
-        self.price = max(1, self.price)
+        # Floor and ceiling
+        self.price = max(5000, min(500000, self.price))  # Range: $5k - $500k
 
         # Update history
         self.price_history.append(self.price)
@@ -192,13 +204,13 @@ class CryptoMarket:
         """
         # Positive price action → more adoption (FOMO)
         if price_change > 0.05:  # 5% gain
-            self.adoption_rate *= 1.02  # 2% more people adopt
+            self.adoption_rate *= 1.008  # 0.8% more people adopt
         elif price_change < -0.10:  # 10% loss
-            self.adoption_rate *= 0.98  # 2% abandon
+            self.adoption_rate *= 0.998  # 0.2% abandon (slower decline - true believers stay)
 
         # Government holding boosts adoption (legitimacy)
         if self.government_holdings > 0:
-            self.adoption_rate *= 1.01
+            self.adoption_rate *= 1.003  # Moderate legitimacy boost
 
         # Bound adoption (can't exceed 100% or go below 0.1%)
         self.adoption_rate = max(0.001, min(1.0, self.adoption_rate))
