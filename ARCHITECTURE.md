@@ -2,26 +2,26 @@
 
 ## System Overview
 
-EconoSphere is a multi-page, agent-based macroeconomic simulator with international trade, AI-powered news analysis, and real-world calibration capabilities.
+EconoSphere is a multi-page, agent-based macroeconomic simulator with **financial markets (stocks & cryptocurrency)**, international trade, AI-powered news analysis, and real-world calibration capabilities.
 
 ## Architecture Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                  MULTI-PAGE DASHBOARD (Dash)                    │
-│  ┌────────────┬─────────────┬─────────────┬──────────────────┐ │
-│  │ Simulation │ News        │ Validation  │ International    │ │
-│  │ (/)        │ Insights    │ (/validate) │ Trade (/trade)   │ │
-│  │            │ (/news)     │             │                  │ │
-│  └────────────┴─────────────┴─────────────┴──────────────────┘ │
-└────────────────────────┬────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                     MULTI-PAGE DASHBOARD (Dash)                          │
+│  ┌────────────┬──────────────┬─────────────┬─────────────┬───────────┐ │
+│  │ Simulation │ Financial    │ News        │ Validation  │Int'l Trade│ │
+│  │ (/)        │ Markets      │ Insights    │ (/validate) │ (/trade)  │ │
+│  │            │ (/markets)   │ (/news)     │             │           │ │
+│  └────────────┴──────────────┴─────────────┴─────────────┴───────────┘ │
+└────────────────────────┬─────────────────────────────────────────────────┘
                          │
           ┌──────────────┴──────────────┐
           │                             │
-  ┌───────▼────────┐          ┌─────────▼──────────┐
-  │ EconomyModel   │          │TradeEconomyModel   │
-  │ (Domestic)     │          │(Multi-Country)     │
-  └────────┬───────┘          └──────────┬─────────┘
+  ┌───────▼────────────────┐   ┌────────▼─────────────┐
+  │ FinancialMarketsModel  │   │ TradeEconomyModel    │
+  │ (Stocks & Crypto)      │   │ (Multi-Country)      │
+  └────────┬───────────────┘   └──────────┬───────────┘
            │                             │
     ┌──────┴──────┐         ┌────────────┴──────────────┐
     │             │         │                           │
@@ -32,15 +32,17 @@ EconoSphere is a multi-page, agent-based macroeconomic simulator with internatio
 └──────────┘  └───────┘ └───────────┘    │  - Rest of World   │
                                          └────────────────────┘
            │
-    ┌──────┴────────────┐
-    │                   │
-┌───▼──────────┐  ┌─────▼────────────┐
-│ Markets      │  │ Economic Metrics │
-│ - Labor      │  │ - GDP            │
-│ - Goods      │  │ - Unemployment   │
-│ - Capital    │  │ - Inflation      │
-│ - FX         │  │ - Gini           │
-└──────────────┘  └──────────────────┘
+    ┌──────┴────────────────────┐
+    │                           │
+┌───▼──────────┐  ┌─────▼──────────────┐
+│ Markets      │  │ Economic Metrics   │
+│ - Labor      │  │ - GDP              │
+│ - Goods      │  │ - Unemployment     │
+│ - Capital    │  │ - Inflation        │
+│ - FX         │  │ - Gini             │
+│ - Stocks     │  │ - Market Cap       │
+│ - Crypto     │  │ - Fear & Greed     │
+└──────────────┘  └────────────────────┘
 
 ┌─────────────────────────────────────┐
 │     EXTERNAL INTEGRATIONS           │
@@ -55,14 +57,17 @@ EconoSphere is a multi-page, agent-based macroeconomic simulator with internatio
 ```
 EconoSphere/
 ├── agents/                          # Agent implementations
-│   ├── consumer.py                 # Worker/household agents
+│   ├── consumer.py                 # Worker/household/investor agents
 │   ├── firm.py                     # Business agents
-│   ├── government.py               # Fiscal authority
+│   ├── government.py               # Fiscal authority + crypto reserve
 │   ├── central_bank.py             # Monetary authority
+│   ├── stock_market.py             # Stock exchange (NEW!)
+│   ├── crypto_market.py            # Cryptocurrency market (NEW!)
 │   └── foreign_sector.py           # Trading partner countries
 │
 ├── simulation/                      # Core simulation logic
 │   ├── economy_model.py            # Base economic model
+│   ├── financial_markets_model.py  # Extended with stocks & crypto (NEW!)
 │   ├── trade_economy_model.py      # Extended with trade/FX
 │   ├── markets.py                  # Market clearing algorithms
 │   └── metrics.py                  # Economic indicator calculation
@@ -71,6 +76,7 @@ EconoSphere/
 │   ├── app.py                      # Main Dash application
 │   └── pages/                      # Individual dashboard pages
 │       ├── simulation.py           # Main simulator (/)
+│       ├── markets.py              # Financial markets (/markets) (NEW!)
 │       ├── news_insights.py        # AI news analysis (/news)
 │       ├── validation.py           # Data validation (/validate)
 │       └── trade.py                # Trade simulation (/trade)

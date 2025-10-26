@@ -94,6 +94,37 @@ Compare simulation output to real-world economic data.
 - Machine learning parameter fitting
 - Historical scenario validation
 
+### 📈 Financial Markets (NEW!)
+
+Stock and cryptocurrency markets with macro-policy integration.
+
+**Features:**
+- **Stock Market**: P/E ratio pricing, Fear & Greed index (0-100)
+- **Cryptocurrency**: Responds to inflation, interest rates, government policies
+- **Consumer Investments**: Agents allocate savings to stocks/crypto
+- **Government Crypto Reserve**: Strategic reserve like US Treasury proposals
+
+**Controls:**
+- **Interest Rate**: Watch crypto crash on hikes, rally on cuts
+- **Government Spending**: Affects corporate earnings and stock prices
+- **Government Crypto Reserve**: Enable reserve, set annual budget
+
+**Scenario Buttons:**
+- **📉 Stock Crash**: Trigger 30% stock market drop
+- **💥 Crypto Crash**: Simulate 50% cryptocurrency crash
+- **🚀 Crypto Rally**: Trigger 30% pump (ETF approval, etc.)
+- **🏦 Enable Crypto Reserve**: Government buys crypto strategically
+- **🤖 Generate AI Insights**: Manual AI analysis of market conditions
+
+**Charts (7 total):**
+- Stock Market Index
+- Cryptocurrency Price
+- Fear & Greed Index
+- Market Capitalizations
+- Consumer Investment Holdings
+- Government Crypto Reserve
+- Crypto Adoption Rate
+
 ### 🌍 International Trade
 
 Multi-country trade simulation with tariffs and FX.
@@ -181,7 +212,30 @@ Multi-country trade simulation with tariffs and FX.
 5. Click **"▶️ Simulate This Policy"**
 6. Go to **Simulation** to see scenario run
 
-### Example 5: Real-World Validation
+### Example 5: Test Crypto-Macro Dynamics (NEW!)
+
+**Goal**: See how crypto responds to monetary policy
+
+1. Go to **Financial Markets** page
+2. Start simulation, let crypto stabilize at ~$50k
+3. **Test Rate Hike:**
+   - Increase **Interest Rate** from 3% to 8%
+   - **Observe**: Crypto crashes (like 2022 Fed hikes!)
+   - Stocks also fall due to higher P/E compression
+
+4. **Test Rate Cut:**
+   - Decrease **Interest Rate** back to 1%
+   - **Observe**: Crypto rallies (like 2020 stimulus!)
+
+5. **Test Government Reserve:**
+   - Click **"Enable Crypto Reserve"** button
+   - Set annual budget to $500k
+   - **Observe**:
+     - Immediate price pump from large purchase
+     - Increased adoption rate (legitimacy boost)
+     - Regulatory sentiment improves
+
+### Example 6: Real-World Validation
 
 **Goal**: Compare to actual economic data
 
@@ -372,6 +426,7 @@ DEBUG_MODE = True  # Set to False for production
 
 **Learn the System:**
 - [ ] Read [ARCHITECTURE.md](ARCHITECTURE.md) for technical details
+- [ ] Read [FINANCIAL_MARKETS.md](FINANCIAL_MARKETS.md) for markets feature
 - [ ] Read [INTERNATIONAL_TRADE.md](INTERNATIONAL_TRADE.md) for trade model
 - [ ] Check [NEWS_INSIGHTS_README.md](NEWS_INSIGHTS_README.md) for AI features
 - [ ] Review agent code in `agents/` directory

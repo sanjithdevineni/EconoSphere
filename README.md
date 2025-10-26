@@ -1,26 +1,31 @@
 # EconoSphere - Macroeconomic Simulator
 
-An advanced agent-based economic simulation platform with multi-country trade, AI-powered news analysis, and real-world calibration.
+An advanced agent-based economic simulation platform with **financial markets (stocks & crypto)**, multi-country trade, AI-powered news analysis, and real-world calibration.
 
 ## 🌟 Features
 
 ### Core Simulation
 - **Agent-Based Modeling**: Autonomous consumers, firms, government, and central bank
+- **Financial Markets**: Stock market with P/E ratios & cryptocurrency with macro-driven dynamics
 - **Multi-Country Trade**: International trade with tariffs, retaliation, and exchange rates
 - **Policy Sandbox**: Test fiscal and monetary policies in real-time
 - **Real-World Calibration**: ML-powered parameter fitting from World Bank data
 
 ### Multi-Page Dashboard
 - **Simulation Page**: Main economic simulator with policy controls
+- **Financial Markets**: Stock & cryptocurrency markets with policy responsiveness
 - **News Insights**: AI-powered analysis of economic news with one-click policy simulation
 - **Validation Page**: Compare simulation output to real-world economic data
 - **International Trade**: Multi-country trade simulation with tariffs and FX dynamics
 
 ### Advanced Features
 - **AI Narrative System**: Real-time economic news generation powered by Azure OpenAI
+- **Crypto-Macro Integration**: First simulator to model cryptocurrency's unique macro-policy relationships
+- **Government Crypto Reserve**: Strategic reserve functionality like US Treasury proposals
+- **Consumer Investment Portfolios**: Agents invest in stocks and crypto based on macro conditions
 - **Capital Flows**: Financial account balancing and currency intervention
 - **Central Bank FX Intervention**: Automatic exchange rate stabilization
-- **Crisis Scenarios**: Pre-configured economic shocks (recession, inflation, trade wars)
+- **Crisis Scenarios**: Pre-configured economic shocks (recession, inflation, trade wars, market crashes)
 
 ## 🚀 Quick Start
 
@@ -81,7 +86,17 @@ Compare simulation to real-world data:
 - Diagnostic metrics (R², MAE, RMSE)
 - Historical scenario replay
 
-### 4. International Trade
+### 4. Financial Markets (NEW!)
+Stock and cryptocurrency markets that respond to macro policy:
+- **Stock Market**: P/E ratio-based pricing, Fear & Greed index, sentiment tracking
+- **Cryptocurrency**: Inflation hedge narrative, interest rate sensitivity, network effects
+- **Consumer Investments**: Agents allocate savings to stocks/crypto based on risk and macro conditions
+- **Government Crypto Reserve**: Enable strategic reserve purchases (like US Treasury proposals)
+- **Policy Responsiveness**: Watch markets react to interest rate changes, government spending
+- **Market Scenarios**: Stock crashes, crypto rallies, regulatory crackdowns
+- **AI Insights Button**: Manual analysis of market conditions using Azure OpenAI
+
+### 5. International Trade
 Multi-country trade simulation:
 - **Trading Partners**: China, EU, Rest of World
 - **Tariff Policies**: Set import tariffs, watch retaliation
@@ -95,14 +110,17 @@ Multi-country trade simulation:
 ```
 EconoSphere/
 ├── agents/                      # Agent classes
-│   ├── consumer.py             # Consumer agents (workers)
+│   ├── consumer.py             # Consumer agents (workers + investors)
 │   ├── firm.py                 # Firm agents (businesses)
-│   ├── government.py           # Fiscal policy authority
+│   ├── government.py           # Fiscal policy + crypto reserve
 │   ├── central_bank.py         # Monetary policy authority
+│   ├── stock_market.py         # Stock exchange (NEW!)
+│   ├── crypto_market.py        # Cryptocurrency market (NEW!)
 │   └── foreign_sector.py       # Trading partner countries
 │
 ├── simulation/                  # Core simulation engine
 │   ├── economy_model.py        # Base economy simulation
+│   ├── financial_markets_model.py  # Extended with stocks & crypto (NEW!)
 │   ├── trade_economy_model.py  # Extended model with trade
 │   ├── markets.py              # Labor & goods markets
 │   └── metrics.py              # Economic indicators
@@ -111,6 +129,7 @@ EconoSphere/
 │   ├── app.py                  # Main Dash application
 │   └── pages/                  # Individual pages
 │       ├── simulation.py       # Main simulator
+│       ├── markets.py          # Financial markets (NEW!)
 │       ├── news_insights.py    # News analysis
 │       ├── validation.py       # Data validation
 │       └── trade.py            # International trade
@@ -236,6 +255,7 @@ Pre-configured economic shocks:
 
 - **[QUICKSTART.md](QUICKSTART.md)**: Setup and usage guide
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: Technical architecture details
+- **[FINANCIAL_MARKETS.md](FINANCIAL_MARKETS.md)**: Financial markets feature guide (NEW!)
 - **[INTERNATIONAL_TRADE.md](INTERNATIONAL_TRADE.md)**: Trade model documentation
 - **[NEWS_INSIGHTS_README.md](NEWS_INSIGHTS_README.md)**: News feature guide
 
@@ -265,8 +285,9 @@ Real-time economic news generation:
 ## 🤝 Contributing
 
 Contributions welcome! Areas for enhancement:
-- Additional agent types (banks, households with savings)
-- More sophisticated market mechanisms
+- Additional financial instruments (bonds, derivatives, options)
+- More cryptocurrency types (stablecoins, DeFi tokens)
+- Bank agents with lending and deposit mechanisms
 - Advanced trade features (quotas, subsidies)
 - Historical scenario library
 - Multiplayer policy competition mode
@@ -275,13 +296,18 @@ Contributions welcome! Areas for enhancement:
 
 MIT License - see LICENSE file for details
 
-## 🏆 Awards & Recognition
+## 🏆 Unique Differentiator
 
-Built with sophisticated agent-based modeling, real-world data integration, and AI-powered analysis. Perfect for:
-- **Policy Testing**: Government agencies and think tanks
-- **Business Strategy**: Market simulation and pricing analysis
-- **Education**: Visualizing complex economic concepts
-- **Research**: Testing economic theories and dynamics
+**First economic simulator with integrated crypto-macro dynamics!** No other ABM simulator models how cryptocurrency responds to monetary policy:
+- Interest rate hikes → crypto crashes (like 2022)
+- Inflation surges → crypto adoption (like 2020-2021)
+- Government reserves → legitimacy boost (like US Treasury debates)
+
+Perfect for:
+- **Policy Testing**: Government agencies analyzing crypto regulation
+- **Business Strategy**: Investment firms modeling macro-market correlations
+- **Education**: Teaching how monetary policy affects asset prices
+- **Research**: Testing crypto-as-inflation-hedge hypothesis
 
 ---
 
