@@ -32,6 +32,7 @@ def create_layout():
         dbc.NavbarSimple(
             children=[
                 dbc.NavItem(dbc.NavLink("Simulation", href="/")),
+                dbc.NavItem(dbc.NavLink("📈 Financial Markets", href="/markets")),
                 dbc.NavItem(dbc.NavLink("Validation", href="/validation")),
                 dbc.NavItem(dbc.NavLink("News Insights", href="/news")),
                 dbc.NavItem(dbc.NavLink("🌍 International Trade", href="/trade")),
