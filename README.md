@@ -1,81 +1,288 @@
-# EconoSphere
+# EconoSphere - Macroeconomic Simulator
 
-An agent-based economic simulation with autonomous agents (consumers, firms, policies) to test economic outcomes and business strategies.
+An advanced agent-based economic simulation platform with multi-country trade, AI-powered news analysis, and real-world calibration.
 
-## Features
+## 🌟 Features
 
-- **Agent-Based Modeling**: Simulates autonomous consumers, firms, government, and central bank
-- **Policy Sandbox**: Test economic policies in real-time (taxes, interest rates, welfare, etc.)
-- **Real-Time Dashboard**: Live visualization of economic indicators
-- **Data-Driven**: Integrates real economic data from World Bank API
-- **Crisis Scenarios**: Pre-configured scenarios (2008 recession, COVID crash, etc.)
+### Core Simulation
+- **Agent-Based Modeling**: Autonomous consumers, firms, government, and central bank
+- **Multi-Country Trade**: International trade with tariffs, retaliation, and exchange rates
+- **Policy Sandbox**: Test fiscal and monetary policies in real-time
+- **Real-World Calibration**: ML-powered parameter fitting from World Bank data
 
-## Project Structure
+### Multi-Page Dashboard
+- **Simulation Page**: Main economic simulator with policy controls
+- **News Insights**: AI-powered analysis of economic news with one-click policy simulation
+- **Validation Page**: Compare simulation output to real-world economic data
+- **International Trade**: Multi-country trade simulation with tariffs and FX dynamics
 
-```
-macroecon/
-├── agents/              # Agent classes (Consumer, Firm, Government, CentralBank)
-├── simulation/          # Core simulation engine
-├── dashboard/           # Plotly Dash UI
-├── data/               # Data integration and storage
-├── utils/              # Helper functions
-├── config.py           # Configuration parameters
-├── requirements.txt    # Dependencies
-└── main.py            # Entry point
-```
+### Advanced Features
+- **AI Narrative System**: Real-time economic news generation powered by Azure OpenAI
+- **Capital Flows**: Financial account balancing and currency intervention
+- **Central Bank FX Intervention**: Automatic exchange rate stabilization
+- **Crisis Scenarios**: Pre-configured economic shocks (recession, inflation, trade wars)
 
-## Quick Start
+## 🚀 Quick Start
+
+### Installation
 
 ```bash
+# Clone repository
+git clone https://github.com/sanjithdevineni/EconoSphere.git
+cd EconoSphere
+
 # Install dependencies
 pip install -r requirements.txt
 
-# Run simulation
+# Set up environment variables (optional)
+cp .env.example .env
+# Edit .env with your API keys
+```
+
+### Running the Simulator
+
+```bash
 python main.py
 ```
 
 Then open http://localhost:8050 in your browser.
 
-## Real-World Calibration
-
-Generate parameter overrides from World Bank data:
+### Optional: Real-World Calibration
 
 ```bash
-# Example: calibrate the United States using the most recent 15 years
-python scripts/calibrate_economy.py --country USA --year 2023 \
-    --output config/calibrated/usa_2023.json
+# Calibrate using World Bank data
+python scripts/calibrate_economy.py --country USA --year 2023
 
-# Use the calibrated values automatically
+# Use calibrated parameters
 export ECON_CALIBRATION_FILE=config/calibrated/usa_2023.json
 python main.py
 ```
 
-Optional arguments:
+## 📊 Dashboard Pages
 
-- `--scenario growth` applies a modest growth shock before fitting.
-- `--scenario recession` applies a downside scenario.
-- `--training-countries` lets you customise the estimation panel.
+### 1. Simulation
+Main economic simulator with:
+- **Policy Controls**: Tax rates, interest rates, government spending, welfare
+- **Real-time Charts**: GDP, unemployment, inflation, inequality
+- **Scenario Triggers**: Recession, inflation shocks, policy presets
+- **Auto-Policy Mode**: Taylor Rule for automatic monetary policy
 
-## Policy Controls
+### 2. News Insights
+AI-powered economic news analysis:
+- Fetch latest economic policy news (NewsAPI)
+- AI analysis of policy impacts (Azure OpenAI)
+- One-click policy simulation from news articles
+- Impact predictions for GDP, inflation, unemployment
 
-- **Tax Rate**: Adjust government tax rate (0-50%)
-- **Interest Rate**: Set central bank interest rate (0-10%)
-- **Welfare Payments**: Universal basic income amount
-- **Government Spending**: Direct government expenditure
+### 3. Validation
+Compare simulation to real-world data:
+- Time-series validation against actual economic data
+- Trend forecasting with ML models
+- Diagnostic metrics (R², MAE, RMSE)
+- Historical scenario replay
 
-## Architecture
+### 4. International Trade
+Multi-country trade simulation:
+- **Trading Partners**: China, EU, Rest of World
+- **Tariff Policies**: Set import tariffs, watch retaliation
+- **Exchange Rates**: PPP, interest rate parity, trade balance effects
+- **Capital Flows**: Financial account balancing
+- **FX Intervention**: Central bank currency stabilization
+- **Trade Scenarios**: Trade wars, free trade agreements
+
+## 🏗️ Project Structure
 
 ```
-Dashboard (Dash) → Simulation Engine → Agents (Consumers, Firms, Gov, Central Bank)
-                        ↓
-                   Market Mechanisms (Labor, Goods)
-                        ↓
-                   Metrics Calculator (GDP, Unemployment, Inflation)
+EconoSphere/
+├── agents/                      # Agent classes
+│   ├── consumer.py             # Consumer agents (workers)
+│   ├── firm.py                 # Firm agents (businesses)
+│   ├── government.py           # Fiscal policy authority
+│   ├── central_bank.py         # Monetary policy authority
+│   └── foreign_sector.py       # Trading partner countries
+│
+├── simulation/                  # Core simulation engine
+│   ├── economy_model.py        # Base economy simulation
+│   ├── trade_economy_model.py  # Extended model with trade
+│   ├── markets.py              # Labor & goods markets
+│   └── metrics.py              # Economic indicators
+│
+├── dashboard/                   # Multi-page web interface
+│   ├── app.py                  # Main Dash application
+│   └── pages/                  # Individual pages
+│       ├── simulation.py       # Main simulator
+│       ├── news_insights.py    # News analysis
+│       ├── validation.py       # Data validation
+│       └── trade.py            # International trade
+│
+├── data/                        # Data integration
+│   ├── world_bank.py           # World Bank API client
+│   ├── news_client.py          # NewsAPI integration
+│   ├── news_analyzer.py        # AI news analysis
+│   └── calibration/            # ML parameter fitting
+│       ├── world_bank_client.py
+│       ├── parameter_fit.py
+│       └── scenarios.py
+│
+├── narrative/                   # AI narrative generation
+│   └── ai_narrator.py          # Economic news generator
+│
+├── scripts/                     # Utility scripts
+│   └── calibrate_economy.py    # Calibration tool
+│
+├── config.py                    # Configuration parameters
+├── main.py                     # Entry point
+└── requirements.txt            # Dependencies
 ```
 
-## Tech Stack
+## 🔧 Configuration
+
+### Environment Variables
+
+Create a `.env` file with:
+
+```bash
+# NewsAPI (optional - for real-time news)
+NEWS_API_KEY=your_newsapi_key
+
+# Azure OpenAI (required for AI features)
+AZURE_OPENAI_ENDPOINT=your_endpoint
+AZURE_OPENAI_API_KEY=your_api_key
+AZURE_OPENAI_DEPLOYMENT=your_deployment_name
+
+# Optional: Custom calibration file
+ECON_CALIBRATION_FILE=config/calibrated/usa_2023.json
+```
+
+### Simulation Parameters
+
+Edit `config.py` to adjust:
+- Number of agents (consumers, firms)
+- Initial economic conditions
+- Policy defaults
+- Market parameters
+- Update frequency
+
+## 📈 Policy Controls
+
+### Fiscal Policy (Government)
+- **VAT Rate**: Value-added tax (0-50%)
+- **Payroll Tax**: Tax on wages (0-50%)
+- **Corporate Tax**: Tax on profits (0-50%)
+- **Welfare Payments**: Unemployment benefits ($0-$2000)
+- **Government Spending**: Direct expenditure ($0-$50,000)
+
+### Monetary Policy (Central Bank)
+- **Interest Rate**: Borrowing cost (0-10%)
+- **Auto Policy**: Enable Taylor Rule for automatic rate adjustment
+
+### Trade Policy (International)
+- **Import Tariffs**: Tariff rate on all imports (0-100%)
+- **Trade Scenarios**: Trigger trade wars or sign FTAs
+
+## 🧪 Crisis Scenarios
+
+Pre-configured economic shocks:
+- **Recession**: Demand shock simulation (2008-style)
+- **Inflation Shock**: Supply-side price surge
+- **Trade War**: Multi-country tariff conflict
+- **Free Trade Agreements**: Remove trade barriers
+
+## 📐 Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│            Multi-Page Dashboard (Dash)              │
+│  ┌──────────┬────────────┬────────────┬──────────┐ │
+│  │Simulation│News Insights│ Validation │  Trade   │ │
+│  └──────────┴────────────┴────────────┴──────────┘ │
+└──────────────────────┬──────────────────────────────┘
+                       │
+        ┌──────────────┴──────────────┐
+        │                             │
+┌───────▼───────┐           ┌─────────▼──────────┐
+│ Economy Model │           │ Trade Economy Model│
+│  (Domestic)   │           │  (Multi-Country)   │
+└───────┬───────┘           └─────────┬──────────┘
+        │                             │
+        │  ┌──────────────────────────┤
+        │  │                          │
+┌───────▼──▼─────────────────┐  ┌────▼────────┐
+│   Agent Ecosystem           │  │Foreign Sects│
+│  - Consumers (100+)         │  │ - China     │
+│  - Firms (10+)              │  │ - EU        │
+│  - Government (1)           │  │ - ROW       │
+│  - Central Bank (1)         │  └─────────────┘
+└──────────┬──────────────────┘
+           │
+┌──────────▼──────────────────┐
+│   Market Mechanisms         │
+│  - Labor Market             │
+│  - Goods Market             │
+│  - Capital Flows            │
+│  - FX Market                │
+└─────────────────────────────┘
+```
+
+## 🛠️ Tech Stack
 
 - **Simulation**: Python, Mesa (ABM framework), NumPy, Pandas
-- **Visualization**: Plotly Dash
-- **Data**: World Bank API
-- **ML**: Scikit-learn (trend forecasting)
+- **Visualization**: Plotly Dash, Dash Bootstrap Components
+- **Data**: World Bank API (wbgapi), NewsAPI
+- **ML**: Scikit-learn (parameter calibration, trend forecasting)
+- **AI**: Azure OpenAI (news analysis, narrative generation)
+
+## 📚 Documentation
+
+- **[QUICKSTART.md](QUICKSTART.md)**: Setup and usage guide
+- **[ARCHITECTURE.md](ARCHITECTURE.md)**: Technical architecture details
+- **[INTERNATIONAL_TRADE.md](INTERNATIONAL_TRADE.md)**: Trade model documentation
+- **[NEWS_INSIGHTS_README.md](NEWS_INSIGHTS_README.md)**: News feature guide
+
+## 🔬 Advanced Features
+
+### Real-World Calibration
+Uses machine learning to fit model parameters from actual economic data:
+- Fetches historical data from World Bank
+- Trains regression models on time-series data
+- Outputs calibrated parameters for realistic simulation
+- Supports scenario generation (growth, recession)
+
+### Capital Flows & FX Intervention
+Realistic international finance:
+- Trade deficits financed by capital inflows
+- Interest rate differentials affect capital flows
+- Central bank intervenes to stabilize exchange rates
+- Foreign reserve management
+
+### AI Narrative System
+Real-time economic news generation:
+- Monitors simulation for significant events
+- Generates news articles with Azure OpenAI
+- Provides economic context and analysis
+- Appears in dashboard feed
+
+## 🤝 Contributing
+
+Contributions welcome! Areas for enhancement:
+- Additional agent types (banks, households with savings)
+- More sophisticated market mechanisms
+- Advanced trade features (quotas, subsidies)
+- Historical scenario library
+- Multiplayer policy competition mode
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🏆 Awards & Recognition
+
+Built with sophisticated agent-based modeling, real-world data integration, and AI-powered analysis. Perfect for:
+- **Policy Testing**: Government agencies and think tanks
+- **Business Strategy**: Market simulation and pricing analysis
+- **Education**: Visualizing complex economic concepts
+- **Research**: Testing economic theories and dynamics
+
+---
+
+**Questions?** Open an issue on GitHub or check the documentation files.

@@ -1,167 +1,387 @@
-# MacroEcon Simulator - Quick Start Guide
+# EconoSphere - Quick Start Guide
 
 ## Installation
 
-1. **Install dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 1. Install Dependencies
 
-2. **Test the simulation**:
-   ```bash
-   python test_simulation.py
-   ```
-   This will verify everything is working correctly.
+```bash
+pip install -r requirements.txt
+```
 
-3. **Launch the dashboard**:
+### 2. (Optional) Set Up API Keys
+
+Create a `.env` file in the project root:
+
+```bash
+# NewsAPI (optional - for real-time news)
+NEWS_API_KEY=your_newsapi_key_here
+
+# Azure OpenAI (required for AI features)
+AZURE_OPENAI_ENDPOINT=https://your-endpoint.openai.azure.com/
+AZURE_OPENAI_API_KEY=your_api_key_here
+AZURE_OPENAI_DEPLOYMENT=your_deployment_name
+AZURE_OPENAI_API_VERSION=2024-02-15-preview
+
+# Optional: Custom calibration file
+ECON_CALIBRATION_FILE=config/calibrated/usa_2023.json
+```
+
+**Note**: The simulator works without API keys using sample data and fallback modes.
+
+### 3. Launch the Dashboard
+
+```bash
+python main.py
+```
+
+Open your browser to **http://localhost:8050**
+
+## Dashboard Pages
+
+### 🏠 Simulation (Main Page)
+
+The core economic simulator with policy controls.
+
+**Controls Available:**
+- **Tax Rates**: VAT, Payroll, Corporate (0-50%)
+- **Interest Rate**: Central bank lending rate (0-10%)
+- **Government Spending**: Direct fiscal stimulus ($0-$50k)
+- **Welfare Payments**: Unemployment benefits ($0-$2000)
+- **Auto-Policy**: Enable Taylor Rule (automatic monetary policy)
+
+**Charts:**
+- GDP (economic output)
+- Unemployment Rate
+- Inflation Rate
+- Gini Coefficient (inequality)
+
+**Scenario Buttons:**
+- **Trigger Recession**: Simulate demand shock
+- **Trigger Inflation**: Simulate supply shock
+- **Reset**: Return to initial state
+
+### 📰 News Insights
+
+AI-powered analysis of real economic news.
+
+**How to Use:**
+1. Click "🔄 Refresh News" to fetch latest articles
+2. Review AI analysis for each article:
+   - Policy type (Monetary, Fiscal, Mixed, Indicator)
+   - Sentiment (Expansionary, Contractionary, Neutral)
+   - Expected impacts on GDP, inflation, unemployment
+3. Click "▶️ Simulate This Policy" to test in simulator
+4. Navigate to Simulation page to see results
+
+**Features:**
+- Real-time news from NewsAPI (with key) or sample articles (without)
+- Azure OpenAI analysis of policy impacts
+- One-click policy parameter extraction
+- Confidence scores on predictions
+
+### 📊 Validation
+
+Compare simulation output to real-world economic data.
+
+**Features:**
+- Time-series charts: Simulation vs Actual data
+- Trend forecasting with ML models
+- Diagnostic metrics (R², MAE, RMSE)
+- ML-calibrated parameters display
+
+**Data Sources:**
+- World Bank API (GDP, unemployment, inflation, etc.)
+- Machine learning parameter fitting
+- Historical scenario validation
+
+### 🌍 International Trade
+
+Multi-country trade simulation with tariffs and FX.
+
+**Trading Partners:**
+- 🇨🇳 China (large manufacturing economy)
+- 🇪🇺 European Union (advanced economy)
+- 🌏 Rest of World (aggregate)
+
+**Controls:**
+- **Import Tariff Rate**: 0-100% on all imports
+- **Interest Rate**: Affects capital flows and FX rates
+- **Government Spending**: Fiscal policy impact
+
+**Trade Scenarios:**
+- **⚔️ Trigger Trade War**: Impose tariffs, watch retaliation
+- **🤝 Sign FTA with China**: Free trade agreement
+- **🇪🇺 Sign FTA with EU**: European free trade
+
+**Charts:**
+- Trade Balance (exports - imports)
+- Import/Export flows
+- Exchange Rates (Yuan, Euro, ROW currency)
+- Country-specific trade volumes
+- Retaliatory tariff tracking
+
+**Advanced Features:**
+- Capital flows (financial account balancing)
+- Central bank FX intervention
+- Dynamic export capacity
+- Trade deficit dampening
+
+## Usage Examples
+
+### Example 1: Test Fiscal Policy
+
+**Goal**: See how tax changes affect the economy
+
+1. Go to **Simulation** page
+2. Start the simulation (click "Start Simulation")
+3. Raise **VAT Rate** from 20% to 40%
+4. **Observe:**
+   - GDP decreases (less consumer spending)
+   - Unemployment rises (firms hire less)
+   - Inflation may decrease (lower demand)
+
+5. **Counter with stimulus:**
+   - Increase **Government Spending** to $40,000
+   - **Observe** partial recovery
+
+### Example 2: Test Monetary Policy
+
+**Goal**: Use interest rates to control inflation
+
+1. Click **"Trigger Inflation"** scenario
+2. **Observe** inflation spike
+3. Raise **Interest Rate** to 8%
+4. **Observe:**
+   - Inflation stabilizes/decreases
+   - Unemployment may rise (firms borrow less)
+   - GDP growth slows
+
+### Example 3: Trade War Simulation
+
+**Goal**: See effects of tariff policies
+
+1. Go to **International Trade** page
+2. Start simulation
+3. Set **Import Tariff** to 60%
+4. Click **"⚔️ Trigger Trade War"**
+5. **Observe:**
+   - China & EU retaliate with their own tariffs
+   - Trade balance changes
+   - Exchange rates shift
+   - Domestic prices affected
+
+### Example 4: News-Based Policy Test
+
+**Goal**: Simulate real-world policy from news
+
+1. Go to **News Insights** page
+2. Click **"🔄 Refresh News"**
+3. Find article about Fed rate decision
+4. Review AI analysis predictions
+5. Click **"▶️ Simulate This Policy"**
+6. Go to **Simulation** to see scenario run
+
+### Example 5: Real-World Validation
+
+**Goal**: Compare to actual economic data
+
+1. **Calibrate with real data:**
    ```bash
+   python scripts/calibrate_economy.py --country USA --year 2023
+   export ECON_CALIBRATION_FILE=config/calibrated/usa_2023.json
    python main.py
    ```
 
-4. **Open your browser** to `http://localhost:8050`
+2. Go to **Validation** page
+3. View calibration parameters and diagnostics
+4. Compare simulation trends to actual data
+5. Check R² scores for accuracy
 
-## Using the Dashboard
+## Advanced Features
 
-### Policy Controls
+### Auto-Policy Mode (Taylor Rule)
 
-**Fiscal Policy (Government)**:
-- **Tax Rate**: Adjust income tax (0-50%)
-- **Welfare Payment**: Set unemployment benefits ($0-$2000)
-- **Government Spending**: Control direct government expenditure
+Enable automatic monetary policy:
 
-**Monetary Policy (Central Bank)**:
-- **Interest Rate**: Set borrowing costs (0-10%)
-- **Auto Policy**: Enable Taylor Rule (automatic rate adjustment)
+1. On Simulation page, check **"Auto Monetary Policy"**
+2. Central bank automatically adjusts interest rates:
+   - **High inflation** → Raise rates
+   - **High unemployment** → Lower rates
+3. Watch central bank respond to economic conditions
 
-### Simulation Controls
+### Real-World Calibration
 
-- **Start**: Begin running the simulation in real-time
-- **Pause**: Freeze the simulation
-- **Reset**: Return to initial conditions
-- **Trigger Recession**: Simulate a demand shock
-- **Trigger Inflation**: Simulate inflationary pressure
+Fit model to actual country data:
 
-### Reading the Charts
+```bash
+# Calibrate to USA 2023
+python scripts/calibrate_economy.py --country USA --year 2023
 
-1. **GDP**: Total economic output (higher = better)
-2. **Unemployment**: Percentage of workers unemployed (lower = better)
-3. **Inflation**: Rate of price increases (target ~2%)
-4. **Gini Coefficient**: Wealth inequality (0 = equal, 1 = unequal)
+# Calibrate to Japan with recession scenario
+python scripts/calibrate_economy.py --country JPN --year 2020 --scenario recession
 
-## Demo Scenarios for Hackathon Presentation
+# Use calibrated parameters
+export ECON_CALIBRATION_FILE=config/calibrated/usa_2023.json
+python main.py
+```
 
-### Scenario 1: Policy Sandbox
-**Goal**: Show how policies affect the economy
+View calibrated parameters on **Validation** page.
 
-1. Start with baseline economy
-2. **Raise taxes to 40%** → Watch GDP fall, unemployment rise
-3. **Lower interest rates to 1%** → See recovery as firms invest more
-4. **Increase welfare to $1500** → Observe inequality decrease
+### AI Narrative System
 
-### Scenario 2: Crisis Response
-**Goal**: Simulate 2008-style recession
+Real-time economic news generation (if Azure OpenAI is configured):
 
-1. Click "Trigger Recession"
-2. **Watch unemployment spike** (consumers lose wealth, firms fire workers)
-3. **Implement crisis response**:
-   - Slash interest rates to 0.25%
-   - Increase government spending to $40,000
-   - Raise welfare to $1200
-4. **Show recovery** as economy stabilizes
+1. Run simulation
+2. AI monitors for significant events:
+   - Unemployment spikes
+   - Inflation surges
+   - GDP crashes/booms
+   - Trade imbalances
+3. Generates news-style narratives
+4. Appears in dashboard (if narrative display enabled)
 
-### Scenario 3: Central Bank Independence
-**Goal**: Demonstrate automatic monetary policy
+## Configuration
 
-1. Enable "Auto Monetary Policy"
-2. Trigger inflation crisis
-3. **Watch central bank automatically raise rates** to fight inflation
-4. Show how Taylor Rule balances inflation vs. unemployment
+### Adjust Simulation Parameters
 
-### Scenario 4: UBI Experiment
-**Goal**: Test universal basic income
+Edit `config.py`:
 
-1. Set welfare to $1800 (very high)
-2. Raise taxes to 35% (to fund it)
-3. **Observe**:
-   - Unemployment impact (do people still work?)
-   - Inequality reduction (Gini coefficient)
-   - Inflation pressure (too much money?)
+```python
+# Agent counts
+NUM_CONSUMERS = 100  # Number of workers
+NUM_FIRMS = 10       # Number of businesses
 
-## Hackathon Pitch Tips
+# Initial conditions
+INITIAL_VAT_RATE = 0.20      # 20% VAT
+INITIAL_INTEREST_RATE = 0.03 # 3% interest
+INITIAL_WELFARE_PAYMENT = 800
 
-### Key Talking Points
+# Update speed
+UPDATE_INTERVAL = 1000  # Milliseconds between updates
+```
 
-1. **Agent-Based Modeling**: "Each consumer and firm is an autonomous agent making decisions"
-2. **Real Economic Theory**: "We implemented actual mechanisms like labor markets, price discovery, and the Taylor Rule"
-3. **Policy Sandbox**: "Perfect for testing 'what-if' scenarios before implementing real policies"
-4. **Business Applications**: "Companies can test pricing strategies in simulated markets"
-5. **Educational**: "Visualize complex economic concepts in real-time"
+### Change Dashboard Port
 
-### Technical Highlights
+In `config.py`:
 
-- **Architecture**: Python + Mesa (ABM) + Plotly Dash
-- **100+ agents** interacting in real-time
-- **Multiple markets**: Labor and goods markets with price discovery
-- **Realistic policies**: Fiscal (taxes, spending) + Monetary (interest rates)
-- **Data integration**: World Bank API for real-world calibration
-
-### Demo Flow (3-5 minutes)
-
-1. **Intro** (30s): "We built a full economic simulator with autonomous agents"
-2. **Show baseline** (30s): Point out the 4 key metrics
-3. **Policy demo** (1m): Adjust tax rate, show immediate impact
-4. **Crisis demo** (1.5m): Trigger recession, implement response, show recovery
-5. **Unique feature** (1m): Show auto-policy or UBI experiment
-6. **Wrap up** (30s): "Perfect for policy testing, business strategy, and education"
-
-## Customization
-
-### Adjust Parameters
-
-Edit `config.py` to change:
-- Number of agents
-- Initial economic conditions
-- Policy defaults
-- Market parameters
-
-### Add New Scenarios
-
-Edit `utils/scenarios.py` to add pre-configured scenarios.
-
-### Integrate More Data
-
-Use `data/world_bank.py` to fetch real economic indicators and calibrate the simulation.
+```python
+PORT = 8050  # Change to different port if needed
+DEBUG_MODE = True  # Set to False for production
+```
 
 ## Troubleshooting
 
-**Simulation runs too fast/slow?**
-- Adjust `UPDATE_INTERVAL` in `config.py` (in milliseconds)
+### Dashboard Won't Load
 
-**Want more/fewer agents?**
-- Change `NUM_CONSUMERS` and `NUM_FIRMS` in `config.py`
-- Note: More agents = slower but more realistic
+**Problem**: Browser shows "can't reach page"
 
-**Charts not updating?**
-- Click "Start Simulation" button
-- Check browser console for errors
+**Solutions:**
+- Check terminal for errors
+- Ensure port 8050 isn't in use
+- Try different port in `config.py`
+- Check firewall settings
 
-**Economy crashes (all unemployed, no GDP)?**
-- Click "Reset" to restart
-- Adjust policies to more moderate values
+### Charts Not Updating
+
+**Problem**: Graphs frozen after starting simulation
+
+**Solutions:**
+- Click "Reset" and restart
+- Check browser console for JavaScript errors
+- Refresh page (F5)
+- Reduce `UPDATE_INTERVAL` in config.py
+
+### News Insights Shows "Loading..."
+
+**Problem**: News page stuck loading
+
+**Solutions:**
+- Check internet connection
+- Verify `NEWS_API_KEY` in `.env` (or use sample mode)
+- Check NewsAPI quota (100 requests/day on free tier)
+- Sample news works without API key
+
+### AI Analysis Not Working
+
+**Problem**: News shows "fallback heuristic analysis"
+
+**Solutions:**
+- Verify Azure OpenAI credentials in `.env`
+- Check API key is valid
+- Ensure deployment name is correct
+- Heuristic fallback still provides basic analysis
+
+### Simulation Crashes
+
+**Problem**: All agents unemployed, GDP = 0
+
+**Solutions:**
+- Click **"Reset"** to restart
+- Use more moderate policy values
+- Avoid extreme combinations (100% tax + 0% spending)
+- Reduce agent count in `config.py` if too slow
+
+### Trade Page Issues
+
+**Problem**: Exchange rates collapsing or exploding
+
+**Solutions:**
+- Check if central bank intervention is enabled
+- Use moderate tariff rates (< 50%)
+- Trade model includes stabilization mechanisms
+- Large deficits/surpluses are expected initially
+
+## Tips & Best Practices
+
+### For Policy Testing
+
+1. **Start with baseline**: Let simulation run stable before changes
+2. **Change one thing**: Isolate policy effects
+3. **Wait for effects**: Policy impacts take 10-20 steps to fully manifest
+4. **Compare scenarios**: Reset and try alternative policies
+
+### For Presentations
+
+1. **Have scenarios ready**: Practice 2-3 demo paths
+2. **Use Reset button**: Start fresh for each demo
+3. **Explain the "why"**: Show causal chains (tax ↑ → spending ↓ → GDP ↓)
+4. **Show trade-offs**: Higher rates fight inflation but raise unemployment
+
+### For Education
+
+1. **Show agent interactions**: Explain how consumers/firms respond
+2. **Visualize feedback loops**: Tax → spending → production → employment
+3. **Test economic theories**: Phillips curve, fiscal multiplier, etc.
+4. **Use validation page**: Connect to real-world data
+
+### For Research
+
+1. **Calibrate to real data**: Use `calibrate_economy.py`
+2. **Export data**: Record history for analysis
+3. **Test hypotheses**: Systematically vary parameters
+4. **Validate results**: Check against actual economic patterns
 
 ## Next Steps
 
-**For Hackathon**:
-- [ ] Practice your demo scenarios
-- [ ] Prepare slides explaining the architecture
-- [ ] Test on demo laptop to ensure dependencies work
-- [ ] Think of clever use cases to pitch
+**Explore Features:**
+- [ ] Try each dashboard page
+- [ ] Test all scenario buttons
+- [ ] Simulate a news article
+- [ ] Run a calibrated simulation
+- [ ] Experiment with trade policies
 
-**Future Enhancements** (if you have time):
-- [ ] Add international trade (import/export)
-- [ ] Implement banking sector
-- [ ] ML-based prediction overlays
-- [ ] Export simulation data to CSV
-- [ ] Multiplayer mode (multiple users control different policies)
+**Learn the System:**
+- [ ] Read [ARCHITECTURE.md](ARCHITECTURE.md) for technical details
+- [ ] Read [INTERNATIONAL_TRADE.md](INTERNATIONAL_TRADE.md) for trade model
+- [ ] Check [NEWS_INSIGHTS_README.md](NEWS_INSIGHTS_README.md) for AI features
+- [ ] Review agent code in `agents/` directory
 
-Good luck with your hackathon!
+**Customize:**
+- [ ] Adjust parameters in `config.py`
+- [ ] Add your own crisis scenarios
+- [ ] Modify agent behaviors
+- [ ] Extend with new features
+
+---
+
+**Questions?** Check the main [README.md](README.md) or open an issue on GitHub.
