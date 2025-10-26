@@ -2,7 +2,10 @@
 Main simulation page - Real-time economic simulation with policy controls
 """
 
+import json
 import logging
+from pathlib import Path
+
 import dash
 from dash import dcc, html, Input, Output, State, callback
 import plotly.graph_objs as go
@@ -22,6 +25,58 @@ dash.register_page(__name__, path='/', name='Simulation', title='Economic Simula
 simulation = None
 
 
+def _load_metadata(path: Path) -> tuple[str | None, int | None]:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        return None, None
+    return payload.get("country"), payload.get("year")
+
+
+def calibration_dropdown_options() -> list[dict[str, str]]:
+    """Build dropdown options from available calibration files."""
+    options = [
+        {"label": "Simulation Defaults", "value": "__defaults__"}
+    ]
+
+    seen_keys: set[tuple[str, int]] = set()
+
+    for path in config.list_calibration_files():
+        if path.stem.lower() == "latest":
+            continue
+
+        country, year = _load_metadata(path)
+        label: str
+        if country and year and (country.upper(), year) not in seen_keys:
+            label = f"{country.upper()} {year}"
+            seen_keys.add((country.upper(), year))
+        else:
+            label = path.stem.replace("_", " ")
+
+        options.append({"label": label, "value": str(path)})
+
+    return options
+
+
+def current_calibration_value() -> str:
+    source = getattr(config, "CALIBRATION_SOURCE", None)
+    path = source.get("path") if isinstance(source, dict) else None
+    if path:
+        cal_path = Path(path)
+        if cal_path.stem.lower() == "latest":
+            country = source.get("country") if isinstance(source, dict) else None
+            year = source.get("year") if isinstance(source, dict) else None
+            if country and year:
+                for candidate in config.list_calibration_files():
+                    if candidate.stem.lower() == "latest":
+                        continue
+                    c_country, c_year = _load_metadata(candidate)
+                    if c_country and c_year and c_country.upper() == country.upper() and c_year == year:
+                        return str(candidate)
+        return path
+    return "__defaults__"
+
+
 def layout(**kwargs):
     """Create the simulation page layout"""
 
@@ -34,8 +89,16 @@ def layout(**kwargs):
                     "Agent-based economic simulation with real-time policy controls",
                     className="text-center text-muted mb-2"
                 ),
+                dcc.Dropdown(
+                    id="calibration-selector",
+                    options=calibration_dropdown_options(),
+                    value=current_calibration_value(),
+                    clearable=False,
+                    className="mb-3",
+                ),
                 dbc.Alert(
-                    calibration_banner(),
+                    id="calibration-banner",
+                    children=calibration_banner(),
                     color="info",
                     className="text-center mx-auto",
                     dismissable=False,
@@ -147,7 +210,7 @@ def layout(**kwargs):
                     dbc.CardHeader(html.H4("Current Snapshot")),
                     dbc.CardBody([
                         html.Div(id='current-metrics', className="row gy-2"),
-                        calibration_snapshot()
+                        html.Div(id='calibration-panel', children=calibration_snapshot())
                     ])
                 ])
             ])
@@ -230,6 +293,38 @@ def update_sliders_from_url(search):
                 pass
 
     return tax_rate, interest_rate, welfare, govt_spending
+
+
+@callback(
+    Output('calibration-banner', 'children'),
+    Output('calibration-panel', 'children'),
+    Output('calibration-selector', 'options'),
+    Output('calibration-selector', 'value'),
+    Input('calibration-selector', 'value'),
+    prevent_initial_call=False
+)
+def handle_calibration_selection(selected_value):
+    """Apply selected calibration and refresh UI."""
+    global simulation
+
+    target_value = selected_value or current_calibration_value()
+
+    if target_value == "__defaults__":
+        config.apply_calibration(None)
+        applied_value = "__defaults__"
+    else:
+        config.apply_calibration(target_value)
+        applied_value = target_value
+
+    # Reset simulation so new calibration takes effect on next start
+    simulation = None
+
+    options = calibration_dropdown_options()
+    available_values = {opt['value'] for opt in options}
+    if applied_value not in available_values:
+        applied_value = "__defaults__"
+
+    return calibration_banner(), calibration_snapshot(), options, applied_value
 
 
 @callback(

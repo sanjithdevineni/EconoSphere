@@ -82,35 +82,79 @@ CALIBRATED_GDP_PER_CAPITA = None
 CALIBRATED_PARAMETERS = None
 CALIBRATION_DIAGNOSTICS = None
 
+_DEFAULT_PARAMETERS = {
+    "CONSUMER_PROPENSITY_TO_CONSUME": CONSUMER_PROPENSITY_TO_CONSUME,
+    "FIRM_PRODUCTIVITY": FIRM_PRODUCTIVITY,
+    "FIRM_GAMMA": FIRM_GAMMA,
+    "FIRM_DEPRECIATION_RATE": FIRM_DEPRECIATION_RATE,
+}
+
+def _apply_calibration_payload(payload: dict[str, object], path: Path | None) -> None:
+    global CONSUMER_PROPENSITY_TO_CONSUME, FIRM_PRODUCTIVITY, FIRM_GAMMA, FIRM_DEPRECIATION_RATE
+    global CALIBRATION_SOURCE, CALIBRATED_UNEMPLOYMENT_RATE, CALIBRATED_GDP_PER_CAPITA
+    global CALIBRATED_PARAMETERS, CALIBRATION_DIAGNOSTICS
+
+    calibration_params = payload.get("parameters", {}) if payload else {}
+
+    CONSUMER_PROPENSITY_TO_CONSUME = calibration_params.get(
+        "mpc",
+        _DEFAULT_PARAMETERS["CONSUMER_PROPENSITY_TO_CONSUME"],
+    )
+    FIRM_PRODUCTIVITY = calibration_params.get(
+        "tfp_a",
+        _DEFAULT_PARAMETERS["FIRM_PRODUCTIVITY"],
+    )
+    FIRM_GAMMA = calibration_params.get("gamma", _DEFAULT_PARAMETERS["FIRM_GAMMA"])
+    FIRM_DEPRECIATION_RATE = calibration_params.get(
+        "depreciation",
+        _DEFAULT_PARAMETERS["FIRM_DEPRECIATION_RATE"],
+    )
+
+    CALIBRATED_UNEMPLOYMENT_RATE = calibration_params.get("unemployment_rate") if calibration_params else None
+    CALIBRATED_GDP_PER_CAPITA = calibration_params.get("gdp_per_capita") if calibration_params else None
+    CALIBRATED_PARAMETERS = dict(calibration_params) if calibration_params else None
+    CALIBRATION_DIAGNOSTICS = payload.get("diagnostics", {}) if payload else {}
+
+    if payload:
+        CALIBRATION_SOURCE = {
+            "country": payload.get("country"),
+            "year": payload.get("year"),
+            "path": str(path) if path else None,
+        }
+    elif path:
+        CALIBRATION_SOURCE = {"error": "failed_to_load", "path": str(path)}
+    else:
+        CALIBRATION_SOURCE = None
+
+
+def apply_calibration(calibration_path: str | Path | None) -> None:
+    """Load calibration from the given path, or reset to defaults if None."""
+    if calibration_path is None:
+        _apply_calibration_payload({}, None)
+        return
+
+    path = Path(calibration_path)
+    if not path.exists():
+        _apply_calibration_payload({}, path)
+        return
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError, json.JSONDecodeError):
+        payload = None
+    _apply_calibration_payload(payload or {}, path)
+
+
+def list_calibration_files(directory: str | Path = "config/calibrated") -> list[Path]:
+    """Return available calibration JSON files sorted alphabetically."""
+    dir_path = Path(directory)
+    if not dir_path.exists():
+        return []
+    return sorted(p for p in dir_path.glob("*.json") if p.is_file())
+
+
 _calibration_path = Path(CALIBRATION_FILE)
 if _calibration_path.exists():
-    try:
-        calibration_payload = json.loads(_calibration_path.read_text(encoding="utf-8"))
-        calibration_params = calibration_payload.get("parameters", {})
-        CALIBRATION_SOURCE = {
-            "country": calibration_payload.get("country"),
-            "year": calibration_payload.get("year"),
-            "path": str(_calibration_path),
-        }
-
-        CONSUMER_PROPENSITY_TO_CONSUME = calibration_params.get(
-            "mpc",
-            CONSUMER_PROPENSITY_TO_CONSUME,
-        )
-        FIRM_PRODUCTIVITY = calibration_params.get(
-            "tfp_a",
-            FIRM_PRODUCTIVITY,
-        )
-        FIRM_GAMMA = calibration_params.get("gamma", FIRM_GAMMA)
-        FIRM_DEPRECIATION_RATE = calibration_params.get(
-            "depreciation",
-            FIRM_DEPRECIATION_RATE,
-        )
-        CALIBRATED_UNEMPLOYMENT_RATE = calibration_params.get("unemployment_rate")
-        CALIBRATED_GDP_PER_CAPITA = calibration_params.get("gdp_per_capita")
-        CALIBRATED_PARAMETERS = dict(calibration_params)
-        CALIBRATION_DIAGNOSTICS = calibration_payload.get("diagnostics", {}) or {}
-    except (OSError, ValueError, json.JSONDecodeError):
-        CALIBRATION_SOURCE = {"error": "failed_to_load", "path": str(_calibration_path)}
-        CALIBRATED_PARAMETERS = None
-        CALIBRATION_DIAGNOSTICS = None
+    apply_calibration(_calibration_path)
+else:
+    apply_calibration(None)

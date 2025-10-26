@@ -1,0 +1,18 @@
+{
+  "country": "USA",
+  "year": 2021,
+  "parameters": {
+    "mpc": 0.655,
+    "tfp_a": 1.18,
+    "gamma": 0.705,
+    "depreciation": 0.047,
+    "unemployment_rate": 0.045,
+    "gdp_per_capita": 72000
+  },
+  "diagnostics": {
+    "mpc": {"r2": 0.82, "mae": 0.028},
+    "tfp_a": {"r2": 0.79, "mae": 0.110},
+    "gamma": {"r2": 0.75, "mae": 0.018},
+    "depreciation": {"r2": 0.63, "mae": 0.006}
+  }
+}

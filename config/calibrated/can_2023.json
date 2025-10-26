@@ -1,0 +1,18 @@
+{
+  "country": "CAN",
+  "year": 2023,
+  "parameters": {
+    "mpc": 0.702,
+    "tfp_a": 1.08,
+    "gamma": 0.693,
+    "depreciation": 0.041,
+    "unemployment_rate": 0.058,
+    "gdp_per_capita": 52000
+  },
+  "diagnostics": {
+    "mpc": {"r2": 0.81, "mae": 0.027},
+    "tfp_a": {"r2": 0.77, "mae": 0.105},
+    "gamma": {"r2": 0.73, "mae": 0.017},
+    "depreciation": {"r2": 0.60, "mae": 0.005}
+  }
+}

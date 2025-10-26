@@ -1,0 +1,18 @@
+{
+  "country": "EU",
+  "year": 2023,
+  "parameters": {
+    "mpc": 0.612,
+    "tfp_a": 1.12,
+    "gamma": 0.688,
+    "depreciation": 0.039,
+    "unemployment_rate": 0.067,
+    "gdp_per_capita": 46000
+  },
+  "diagnostics": {
+    "mpc": {"r2": 0.79, "mae": 0.030},
+    "tfp_a": {"r2": 0.75, "mae": 0.108},
+    "gamma": {"r2": 0.70, "mae": 0.019},
+    "depreciation": {"r2": 0.58, "mae": 0.006}
+  }
+}
