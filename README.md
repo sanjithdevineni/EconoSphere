@@ -1,6 +1,7 @@
 # EconoSphere - Macroeconomic Simulator
 
-An advanced agent-based economic simulation platform with **financial markets (stocks & crypto)**, multi-country trade, AI-powered news analysis, and real-world calibration.
+Simulates entire economies with autonomous agents (consumers, firms, policies, central bank) to test economic outcomes or business strategies.
+Takes into account the impact of tariffs, current trends and news, government crypto-currency reserves and relationships between different markets. 
 
 ## 🌟 Features
 
@@ -19,6 +20,7 @@ An advanced agent-based economic simulation platform with **financial markets (s
 - **International Trade**: Multi-country trade simulation with tariffs and FX dynamics
 
 ### Advanced Features
+- **News Simulation System**: Real world news fetching and simulating the policies suggested/being considered by the government, with AI summarization
 - **AI Narrative System**: Real-time economic news generation powered by Azure OpenAI
 - **Crypto-Macro Integration**: First simulator to model cryptocurrency's unique macro-policy relationships
 - **Government Crypto Reserve**: Strategic reserve functionality like US Treasury proposals
@@ -73,10 +75,10 @@ Main economic simulator with:
 - **Auto-Policy Mode**: Taylor Rule for automatic monetary policy
 
 ### 2. News Insights
-AI-powered economic news analysis:
+AI-powered economic news analysis and **SIMULATION**:
 - Fetch latest economic policy news (NewsAPI)
 - AI analysis of policy impacts (Azure OpenAI)
-- One-click policy simulation from news articles
+- **One-click policy simulation from news articles**
 - Impact predictions for GDP, inflation, unemployment
 
 ### 3. Validation
@@ -86,7 +88,7 @@ Compare simulation to real-world data:
 - Diagnostic metrics (R², MAE, RMSE)
 - Historical scenario replay
 
-### 4. Financial Markets (NEW!)
+### 4. Financial Markets
 Stock and cryptocurrency markets that respond to macro policy:
 - **Stock Market**: P/E ratio-based pricing, Fear & Greed index, sentiment tracking
 - **Cryptocurrency**: Inflation hedge narrative, interest rate sensitivity, network effects
@@ -212,9 +214,9 @@ Pre-configured economic shocks:
 ```
 ┌─────────────────────────────────────────────────────┐
 │            Multi-Page Dashboard (Dash)              │
-│  ┌──────────┬────────────┬────────────┬──────────┐ │
-│  │Simulation│News Insights│ Validation │  Trade   │ │
-│  └──────────┴────────────┴────────────┴──────────┘ │
+│  ┌──────────┬────────────┬────────────┬──────────┐  │
+│  │Simulation│News Insights│ Validation │  Trade  │  │
+│  └──────────┴────────────┴────────────┴──────────┘  │
 └──────────────────────┬──────────────────────────────┘
                        │
         ┌──────────────┴──────────────┐
@@ -226,7 +228,7 @@ Pre-configured economic shocks:
         │                             │
         │  ┌──────────────────────────┤
         │  │                          │
-┌───────▼──▼─────────────────┐  ┌────▼────────┐
+┌───────▼──▼─────────────────┐   ┌────▼────────┐
 │   Agent Ecosystem           │  │Foreign Sects│
 │  - Consumers (100+)         │  │ - China     │
 │  - Firms (10+)              │  │ - EU        │
@@ -255,7 +257,7 @@ Pre-configured economic shocks:
 
 - **[QUICKSTART.md](QUICKSTART.md)**: Setup and usage guide
 - **[ARCHITECTURE.md](ARCHITECTURE.md)**: Technical architecture details
-- **[FINANCIAL_MARKETS.md](FINANCIAL_MARKETS.md)**: Financial markets feature guide (NEW!)
+- **[FINANCIAL_MARKETS.md](FINANCIAL_MARKETS.md)**: Financial markets feature guide 
 - **[INTERNATIONAL_TRADE.md](INTERNATIONAL_TRADE.md)**: Trade model documentation
 - **[NEWS_INSIGHTS_README.md](NEWS_INSIGHTS_README.md)**: News feature guide
 
@@ -282,33 +284,17 @@ Real-time economic news generation:
 - Provides economic context and analysis
 - Appears in dashboard feed
 
-## 🤝 Contributing
-
-Contributions welcome! Areas for enhancement:
-- Additional financial instruments (bonds, derivatives, options)
-- More cryptocurrency types (stablecoins, DeFi tokens)
-- Bank agents with lending and deposit mechanisms
-- Advanced trade features (quotas, subsidies)
-- Historical scenario library
-- Multiplayer policy competition mode
-
-## 📄 License
-
-MIT License - see LICENSE file for details
 
 ## 🏆 Unique Differentiator
 
-**First economic simulator with integrated crypto-macro dynamics!** No other ABM simulator models how cryptocurrency responds to monetary policy:
+**FIRST economic simulator with integrated crypto-macro dynamics!** No other ABM simulator models how cryptocurrency responds to monetary policy:
+- Government reserves → legitimacy boost (like US Treasury HOLDING major crypto-currency reserves from July 2025)
 - Interest rate hikes → crypto crashes (like 2022)
 - Inflation surges → crypto adoption (like 2020-2021)
-- Government reserves → legitimacy boost (like US Treasury debates)
+
 
 Perfect for:
 - **Policy Testing**: Government agencies analyzing crypto regulation
 - **Business Strategy**: Investment firms modeling macro-market correlations
 - **Education**: Teaching how monetary policy affects asset prices
 - **Research**: Testing crypto-as-inflation-hedge hypothesis
-
----
-
-**Questions?** Open an issue on GitHub or check the documentation files.
