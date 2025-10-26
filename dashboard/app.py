@@ -8,8 +8,8 @@ from dash import dcc, html, Input, Output, State
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
 
-from simulation.economy_model import EconomyModel
 import config
+from simulation.economy_model import EconomyModel
 
 LOGGER = logging.getLogger(__name__)
 
@@ -43,9 +43,15 @@ def create_layout():
                 html.H1("MacroEcon Simulator", className="text-center mb-4 mt-4"),
                 html.P(
                     "Agent-based economic simulation with real-time policy controls",
-                    className="text-center text-muted mb-4"
+                    className="text-center text-muted mb-2"
+                ),
+                dbc.Alert(
+                    calibration_banner(),
+                    color="info",
+                    className="text-center mx-auto",
+                    dismissable=False,
                 )
-            ])
+            ], width=12)
         ]),
 
         # Control Panel
@@ -151,7 +157,8 @@ def create_layout():
                 dbc.Card([
                     dbc.CardHeader(html.H4("Current Snapshot")),
                     dbc.CardBody([
-                        html.Div(id='current-metrics', className="row")
+                        html.Div(id='current-metrics', className="row gy-2"),
+                        calibration_snapshot()
                     ])
                 ])
             ])
@@ -381,3 +388,103 @@ def register_callbacks(app):
 if __name__ == '__main__':
     app = create_dashboard()
     app.run_server(debug=config.DEBUG_MODE, port=config.PORT)
+# Helper ---------------------------------------------------------------------
+
+
+def calibration_banner():
+    """Return a banner showing calibration metadata."""
+    source = getattr(config, "CALIBRATION_SOURCE", None)
+    if source and not source.get("error"):
+        country = source.get("country") or "Unknown"
+        year = source.get("year") or "N/A"
+        path = source.get("path")
+        text = [f"Calibrated parameters loaded: {country} {year}"]
+        if path:
+            text.append(f"(source: {path})")
+        return html.Span(" ".join(text))
+    if source and source.get("error"):
+        path = source.get("path")
+        message = f"Calibration override failed to load ({path}); using built-in defaults."
+        return html.Span(message)
+    return html.Span(
+        "Using built-in simulation defaults. Run scripts/calibrate_economy.py to load real-world parameters.",
+        className="text-muted",
+    )
+
+
+def calibration_snapshot():
+    """Render a snapshot of calibrated parameters and diagnostics."""
+    params = getattr(config, "CALIBRATED_PARAMETERS", None)
+    if not params:
+        return dbc.Alert(
+            "No calibration loaded – simulation is using default parameters.",
+            color="light",
+            className="mt-3 text-muted",
+        )
+
+    items = []
+
+    def fmt_value(key, value):
+        if value is None:
+            return "—"
+        if key == "unemployment_rate":
+            return f"{value * 100:.1f}%"
+        if key == "gdp_per_capita":
+            return f"${value:,.0f}"
+        return f"{value:.3f}"
+
+    labels = [
+        ("mpc", "MPC (household propensity)"),
+        ("tfp_a", "Productivity (A)"),
+        ("gamma", "Returns to scale (γ)"),
+        ("depreciation", "Capital depreciation (δ)"),
+        ("unemployment_rate", "Baseline unemployment"),
+        ("gdp_per_capita", "GDP per capita"),
+    ]
+
+    for key, label in labels:
+        items.append(
+            dbc.ListGroupItem(
+                [
+                    html.Span(label),
+                    html.Span(
+                        fmt_value(key, params.get(key)),
+                        className="fw-semibold",
+                    ),
+                ],
+                className="d-flex justify-content-between align-items-center",
+            )
+        )
+
+    diagnostics = getattr(config, "CALIBRATION_DIAGNOSTICS", {}) or {}
+    diag_rows = []
+    for key, diag in diagnostics.items():
+        r2 = diag.get("r2")
+        mae = diag.get("mae")
+        if r2 is None and mae is None:
+            continue
+        diag_rows.append(
+            html.Div(
+                [
+                    html.Span(key.upper(), className="fw-semibold me-2"),
+                    html.Span(
+                        f"R² {r2:.2f} · MAE {mae:.3f}"
+                        if r2 is not None and mae is not None
+                        else f"R² {r2:.2f}" if r2 is not None else f"MAE {mae:.3f}",
+                        className="text-muted",
+                    ),
+                ],
+                className="small",
+            )
+        )
+
+    return html.Div(
+        [
+            html.H5("ML-Calibrated Parameters", className="mt-3"),
+            dbc.ListGroup(items, flush=True),
+            html.Div(
+                diag_rows,
+                className="mt-2",
+            ) if diag_rows else html.Div(className="mt-2"),
+        ]
+    )

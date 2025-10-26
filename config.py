@@ -2,6 +2,12 @@
 Configuration parameters for the economic simulation
 """
 
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
 # Simulation Parameters
 NUM_CONSUMERS = 100
 NUM_FIRMS = 10
@@ -39,7 +45,7 @@ CONSUMER_PROPENSITY_TO_CONSUME = 0.58  # Marginal propensity to consume (MPC)
 CONSUMER_WEALTH_SPEND_RATE = 0.025  # Share of wealth households spend each step
 
 # Labor Adjustment Parameters
-LABOR_ADJUSTMENT_RATE = 0.6  # Max fractional change in firm workforce per period
+LABOR_ADJUSTMENT_RATE = 0.25  # Max fractional change in firm workforce per period
 MIN_EXPECTED_DEMAND_PER_FIRM = 2  # Floor on expected demand to prevent collapse
 
 # Firm Production Parameters
@@ -64,3 +70,47 @@ WAGE_ADJUSTMENT_SPEED = 0.05  # eta: wage response to labor shortage (0.05-0.15 
 UPDATE_INTERVAL = 1000  # milliseconds
 PORT = 8050
 DEBUG_MODE = True
+
+# Calibration Overrides
+CALIBRATION_FILE = os.environ.get(
+    "ECON_CALIBRATION_FILE",
+    "config/calibrated/latest.json",
+)
+CALIBRATION_SOURCE = None
+CALIBRATED_UNEMPLOYMENT_RATE = None
+CALIBRATED_GDP_PER_CAPITA = None
+CALIBRATED_PARAMETERS = None
+CALIBRATION_DIAGNOSTICS = None
+
+_calibration_path = Path(CALIBRATION_FILE)
+if _calibration_path.exists():
+    try:
+        calibration_payload = json.loads(_calibration_path.read_text(encoding="utf-8"))
+        calibration_params = calibration_payload.get("parameters", {})
+        CALIBRATION_SOURCE = {
+            "country": calibration_payload.get("country"),
+            "year": calibration_payload.get("year"),
+            "path": str(_calibration_path),
+        }
+
+        CONSUMER_PROPENSITY_TO_CONSUME = calibration_params.get(
+            "mpc",
+            CONSUMER_PROPENSITY_TO_CONSUME,
+        )
+        FIRM_PRODUCTIVITY = calibration_params.get(
+            "tfp_a",
+            FIRM_PRODUCTIVITY,
+        )
+        FIRM_GAMMA = calibration_params.get("gamma", FIRM_GAMMA)
+        FIRM_DEPRECIATION_RATE = calibration_params.get(
+            "depreciation",
+            FIRM_DEPRECIATION_RATE,
+        )
+        CALIBRATED_UNEMPLOYMENT_RATE = calibration_params.get("unemployment_rate")
+        CALIBRATED_GDP_PER_CAPITA = calibration_params.get("gdp_per_capita")
+        CALIBRATED_PARAMETERS = dict(calibration_params)
+        CALIBRATION_DIAGNOSTICS = calibration_payload.get("diagnostics", {}) or {}
+    except (OSError, ValueError, json.JSONDecodeError):
+        CALIBRATION_SOURCE = {"error": "failed_to_load", "path": str(_calibration_path)}
+        CALIBRATED_PARAMETERS = None
+        CALIBRATION_DIAGNOSTICS = None
