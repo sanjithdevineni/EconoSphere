@@ -7,8 +7,8 @@ from dash import dcc, html, Input, Output, State
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
 
-from simulation.economy_model import EconomyModel
 import config
+from simulation.economy_model import EconomyModel
 
 
 # Global simulation instance
@@ -40,9 +40,15 @@ def create_layout():
                 html.H1("MacroEcon Simulator", className="text-center mb-4 mt-4"),
                 html.P(
                     "Agent-based economic simulation with real-time policy controls",
-                    className="text-center text-muted mb-4"
+                    className="text-center text-muted mb-2"
+                ),
+                dbc.Alert(
+                    calibration_banner(),
+                    color="info",
+                    className="text-center mx-auto",
+                    dismissable=False,
                 )
-            ])
+            ], width=12)
         ]),
 
         # Control Panel
@@ -299,3 +305,25 @@ def register_callbacks(app):
 if __name__ == '__main__':
     app = create_dashboard()
     app.run_server(debug=config.DEBUG_MODE, port=config.PORT)
+# Helper ---------------------------------------------------------------------
+
+
+def calibration_banner():
+    """Return a banner showing calibration metadata."""
+    source = getattr(config, "CALIBRATION_SOURCE", None)
+    if source and not source.get("error"):
+        country = source.get("country") or "Unknown"
+        year = source.get("year") or "N/A"
+        path = source.get("path")
+        text = [f"Calibrated parameters loaded: {country} {year}"]
+        if path:
+            text.append(f"(source: {path})")
+        return html.Span(" ".join(text))
+    if source and source.get("error"):
+        path = source.get("path")
+        message = f"Calibration override failed to load ({path}); using built-in defaults."
+        return html.Span(message)
+    return html.Span(
+        "Using built-in simulation defaults. Run scripts/calibrate_economy.py to load real-world parameters.",
+        className="text-muted",
+    )
