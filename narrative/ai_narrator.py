@@ -190,6 +190,184 @@ class AINarrator:
         )
 
     # ------------------------------------------------------------------
+    # MARKET-SPECIFIC NARRATIVES (HACKATHON FEATURE!)
+    # ------------------------------------------------------------------
+
+    def generate_market_narrative(self, event_type: str, current: Mapping[str, Any], history: Mapping[str, Sequence[float]]) -> str:
+        """
+        Generate narrative for financial market events
+
+        Args:
+            event_type: Type of market event (crypto_crash, stock_rally, etc.)
+            current: Current metrics including market data
+            history: Historical metrics
+
+        Returns:
+            Narrative string
+        """
+        if not self.enabled:
+            return self._market_fallback(event_type, current)
+
+        prompt = self._build_market_prompt(event_type, current, history)
+        try:
+            response = self._call_azure(prompt)
+            text = self._extract_content(response)
+            if text:
+                return text.strip()
+            LOGGER.warning("Azure returned empty market narrative; using fallback")
+        except Exception as exc:  # noqa: BLE001
+            LOGGER.warning("Market narrative generation failed: %s", exc, exc_info=True)
+        return self._market_fallback(event_type, current)
+
+    def _build_market_prompt(self, event_type: str, current: Mapping[str, Any], history: Mapping[str, Sequence[float]]) -> str:
+        """
+        Build prompt for market-specific narratives
+
+        Args:
+            event_type: Market event type
+            current: Current metrics
+            history: Historical data
+
+        Returns:
+            Prompt string for AI
+        """
+        # Common economic context
+        inflation = current.get("inflation_rate", 0.02) * 100
+        interest_rate = current.get("interest_rate", 0.03) * 100
+        unemployment = current.get("unemployment_rate", 0.05) * 100
+
+        # Market-specific data
+        crypto_price = current.get("crypto_price", 50000)
+        stock_index = current.get("stock_index", 100)
+        crypto_adoption = current.get("crypto_adoption_rate", 0.01) * 100
+        govt_reserve = current.get("govt_crypto_reserve_value", 0)
+
+        if event_type == "crypto_crash":
+            crypto_change = current.get("crypto_price_change", -50)
+            return (
+                f"Write a 2-sentence economic news headline about a {abs(crypto_change):.0f}% cryptocurrency crash. "
+                f"Context: Crypto price fell to ${crypto_price:,.0f}. "
+                f"Macro environment: {inflation:.1f}% inflation, {interest_rate:.1f}% interest rates. "
+                f"Explain how high interest rates or regulatory concerns might be causing the crash. "
+                f"Keep it dramatic but professional, like Bloomberg or WSJ."
+            )
+
+        elif event_type == "crypto_rally":
+            crypto_change = current.get("crypto_price_change", 30)
+            return (
+                f"Write a 2-sentence economic news headline about a {crypto_change:.0f}% cryptocurrency rally. "
+                f"Context: Crypto surged to ${crypto_price:,.0f}, {crypto_adoption:.1f}% population adoption. "
+                f"Macro environment: {inflation:.1f}% inflation (inflation hedge narrative). "
+                f"Mention institutional adoption, inflation hedge narrative, or regulatory approval. "
+                f"Keep it exciting but professional."
+            )
+
+        elif event_type == "stock_crash":
+            stock_change = current.get("stock_daily_return", -30) * 100
+            return (
+                f"Write a 2-sentence economic news headline about a {abs(stock_change):.0f}% stock market crash. "
+                f"Context: Market index fell to {stock_index:.2f}, {interest_rate:.1f}% interest rates. "
+                f"Explain risk-off sentiment, rate fears, or recession concerns. "
+                f"Professional tone like Financial Times."
+            )
+
+        elif event_type == "stock_rally":
+            stock_change = current.get("stock_daily_return", 10) * 100
+            return (
+                f"Write a 2-sentence economic news headline about a {stock_change:.0f}% stock market rally. "
+                f"Context: Market index rose to {stock_index:.2f}. "
+                f"Macro: {unemployment:.1f}% unemployment, strong economy. "
+                f"Mention earnings growth, low unemployment, or optimism. "
+                f"Upbeat but professional tone."
+            )
+
+        elif event_type == "govt_crypto_purchase":
+            return (
+                f"Write a 2-sentence breaking news headline about government establishing strategic cryptocurrency reserve. "
+                f"Context: Government now holds ${govt_reserve:,.0f} in crypto. "
+                f"THIS IS A MAJOR NARRATIVE EVENT - like US Treasury Bitcoin proposal. "
+                f"Emphasize legitimacy, institutional adoption, and market impact. "
+                f"Dramatic tone like breaking news."
+            )
+
+        elif event_type == "crypto_adoption_surge":
+            return (
+                f"Write a 2-sentence news headline about cryptocurrency adoption surge. "
+                f"Context: {crypto_adoption:.1f}% of population now holds crypto, price ${crypto_price:,.0f}. "
+                f"High inflation ({inflation:.1f}%) driving adoption as inflation hedge. "
+                f"Network effects and mainstream acceptance theme."
+            )
+
+        else:
+            # Generic market update
+            return (
+                f"Write a 2-sentence financial markets update. "
+                f"Stock index: {stock_index:.2f}, Crypto: ${crypto_price:,.0f}. "
+                f"Macro: {inflation:.1f}% inflation, {interest_rate:.1f}% rates. "
+                f"Professional summary of current market conditions."
+            )
+
+    def _market_fallback(self, event_type: str, current: Mapping[str, Any]) -> str:
+        """
+        Fallback narratives when AI is unavailable
+
+        Args:
+            event_type: Market event type
+            current: Current metrics
+
+        Returns:
+            Simple narrative string
+        """
+        crypto_price = current.get("crypto_price", 50000)
+        stock_index = current.get("stock_index", 100)
+        inflation = current.get("inflation_rate", 0.02) * 100
+        interest_rate = current.get("interest_rate", 0.03) * 100
+
+        if event_type == "crypto_crash":
+            return (
+                f"Cryptocurrency markets plunge as prices fall to ${crypto_price:,.0f}. "
+                f"Analysts cite {interest_rate:.1f}% interest rates and regulatory concerns as risk-off sentiment spreads."
+            )
+
+        elif event_type == "crypto_rally":
+            return (
+                f"Cryptocurrency surges to ${crypto_price:,.0f} as inflation hedge narrative gains traction. "
+                f"With inflation at {inflation:.1f}%, investors flock to digital assets seeking protection."
+            )
+
+        elif event_type == "stock_crash":
+            return (
+                f"Stock markets tumble with index falling to {stock_index:.2f} on rate fears. "
+                f"The {interest_rate:.1f}% interest rate is weighing on equity valuations as investors turn cautious."
+            )
+
+        elif event_type == "stock_rally":
+            return (
+                f"Stocks rally with market index climbing to {stock_index:.2f} on economic optimism. "
+                f"Strong fundamentals and investor confidence drive broad-based gains across sectors."
+            )
+
+        elif event_type == "govt_crypto_purchase":
+            govt_reserve = current.get("govt_crypto_reserve_value", 0)
+            return (
+                f"BREAKING: Government establishes strategic cryptocurrency reserve worth ${govt_reserve:,.0f}. "
+                f"Historic move legitimizes digital assets and signals mainstream institutional adoption."
+            )
+
+        elif event_type == "crypto_adoption_surge":
+            adoption = current.get("crypto_adoption_rate", 0.01) * 100
+            return (
+                f"Cryptocurrency adoption soars to {adoption:.1f}% of population as inflation concerns drive interest. "
+                f"Network effects accelerate as digital currency enters mainstream consciousness."
+            )
+
+        else:
+            return (
+                f"Financial markets update: Stock index at {stock_index:.2f}, cryptocurrency trading at ${crypto_price:,.0f}. "
+                f"Markets respond to {inflation:.1f}% inflation and {interest_rate:.1f}% policy rate environment."
+            )
+
+    # ------------------------------------------------------------------
     # Utility formatting helpers
     # ------------------------------------------------------------------
 

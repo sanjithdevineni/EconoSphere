@@ -44,6 +44,9 @@ INITIAL_PRICE_LEVEL = 10
 CONSUMER_PROPENSITY_TO_CONSUME = 0.58  # Marginal propensity to consume (MPC)
 CONSUMER_WEALTH_SPEND_RATE = 0.025  # Share of wealth households spend each step
 
+# Investment & Financial Markets Parameters
+CONSUMER_RISK_TOLERANCE = 0.3  # Risk tolerance (0-1): affects crypto vs stock allocation
+
 # Labor Adjustment Parameters
 LABOR_ADJUSTMENT_RATE = 0.25  # Max fractional change in firm workforce per period
 MIN_EXPECTED_DEMAND_PER_FIRM = 2  # Floor on expected demand to prevent collapse
