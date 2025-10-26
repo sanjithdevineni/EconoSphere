@@ -1,4 +1,7 @@
-![](Logo.png)
+<p align="left">
+  <img src="Logo.png" alt="EconoSphere Dashboard" width="250">
+</p>
+
 # EconoSphere - Macroeconomic Simulator
 
 ### Watch the economy ripple with every decision.
