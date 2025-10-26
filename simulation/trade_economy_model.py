@@ -53,6 +53,9 @@ class TradeEconomyModel(EconomyModel):
         self.tariff_rate = initial_tariff_rate
         self._last_tariff_rate = initial_tariff_rate
 
+        # Track production for export calculations (exports based on previous period's production)
+        self._previous_production = 1000  # Initial estimate
+
         # Create foreign sectors (major trading partners)
         self.foreign_sectors: Dict[str, ForeignSector] = {}
         self._create_foreign_sectors()
@@ -134,7 +137,8 @@ class TradeEconomyModel(EconomyModel):
         else:
             avg_price = config.INITIAL_PRICE_LEVEL
         total_consumption_demand = sum(c.wealth * config.CONSUMER_WEALTH_SPEND_RATE for c in self.consumers)
-        total_production = sum(f.production for f in self.firms) if self.firms else 1000
+        # Use PREVIOUS period's production for exports (firms produce, then export)
+        total_production = self._previous_production
 
         # Track aggregates
         total_imports = 0.0
@@ -233,7 +237,7 @@ class TradeEconomyModel(EconomyModel):
     def step(self):
         """Override step to add trade flows"""
 
-        # Calculate trade flows before main economy step
+        # Calculate trade flows (using previous period's production for exports)
         trade_flows = self._calculate_trade_flows()
 
         # Integrate trade into economy
@@ -241,6 +245,10 @@ class TradeEconomyModel(EconomyModel):
 
         # Run parent economy step (this calls the wrapped _user_step)
         result = super().step()
+
+        # Save current production for next period's export calculations
+        current_production = sum(f.production for f in self.firms) if self.firms else 1000
+        self._previous_production = current_production
 
         # Record trade metrics
         self.trade_history['total_imports'].append(trade_flows['total_import_value'])
