@@ -351,8 +351,8 @@ class FinancialMarketsModel(EconomyModel):
             self.government.enable_crypto_reserve(annual_budget)
             LOGGER.info(f"Government crypto reserve enabled: ${annual_budget:,.0f}/year")
 
-            # Immediate one-time purchase to kickstart reserve
-            initial_purchase = annual_budget * 0.5  # 50% of annual budget
+            # Immediate LARGE one-time purchase to kickstart reserve (10x annual budget)
+            initial_purchase = annual_budget * 10.0  # 1000% of annual budget (BIG SPLASH!)
             if initial_purchase > 0:
                 self.government.buy_crypto_for_reserve(self.crypto_market, initial_purchase)
                 LOGGER.info(f"Initial reserve purchase: ${initial_purchase:,.0f}")

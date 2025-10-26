@@ -36,9 +36,9 @@ class CryptoMarket:
         self.price = 50000  # Initial price ($50k like Bitcoin)
         self.price_history = [self.price]
 
-        # Supply (fixed like Bitcoin)
-        self.max_supply = 21_000_000
-        self.circulating_supply = 19_000_000  # 90% already mined
+        # Supply (smaller than Bitcoin for demo purposes)
+        self.max_supply = 100_000  # 100k max supply (like smaller alt coins)
+        self.circulating_supply = 90_000  # 90% already mined
 
         # Adoption metrics
         self.holders = 0  # Number of holders
@@ -46,7 +46,7 @@ class CryptoMarket:
         self.transaction_volume = 0
 
         # Market dynamics
-        self.volatility = 0.15  # 15% daily volatility (realistic for crypto)
+        self.volatility = 0.08  # 8% daily volatility (balanced for demo)
         self.liquidity = 1000000  # Market depth
 
         # Sentiment & narratives
@@ -56,7 +56,7 @@ class CryptoMarket:
 
         # Macro sensitivity parameters (UNIQUE TO THIS SIMULATOR!)
         self.inflation_sensitivity = 5.0  # How much inflation drives adoption
-        self.rate_sensitivity = -3.0  # How much rates hurt crypto
+        self.rate_sensitivity = -8.0  # How much rates hurt crypto (stronger for demo)
         self.adoption_momentum = 0.02  # Network effect growth
 
         # Government/institutional holdings
@@ -159,9 +159,10 @@ class CryptoMarket:
 
         # === MEAN REVERSION ===
         # Prevent consistent trending by adding reversion to fundamental value
+        # But make it WEAK so it doesn't cancel out scenarios
         fundamental_price = 50000  # Baseline fundamental value
         price_deviation = (self.price - fundamental_price) / fundamental_price
-        mean_reversion = -price_deviation * 0.05  # 5% pull back to fundamental
+        mean_reversion = -price_deviation * 0.01  # 1% pull back to fundamental (was 5%)
 
         total_price_change += mean_reversion
 
@@ -251,8 +252,13 @@ class CryptoMarket:
         self.government_holdings += coins_purchased
 
         # MASSIVE price impact (government buying is bullish signal!)
-        demand_shock = amount / (self.price * self.circulating_supply)
-        price_pump = min(0.30, demand_shock * 100)  # Cap at 30% instant pump
+        # Calculate as % of market cap for proper impact
+        market_cap = self.price * self.circulating_supply
+        purchase_as_pct_of_mcap = amount / market_cap
+
+        # Scale impact with power function for dramatic effect
+        # Even small purchases create buzz (1% of mcap = 30% pump, 0.1% = 9.5% pump)
+        price_pump = min(0.50, (purchase_as_pct_of_mcap ** 0.5) * 3.0)
 
         self.price *= (1 + price_pump)
 
@@ -261,6 +267,9 @@ class CryptoMarket:
 
         # Adoption surge (people follow government)
         self.adoption_rate *= 1.1
+
+        # Update history immediately (so charts show the pump)
+        self.price_history.append(self.price)
 
     def trigger_crash(self, severity: float = 0.5):
         """

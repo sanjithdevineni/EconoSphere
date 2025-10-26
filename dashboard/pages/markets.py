@@ -451,6 +451,7 @@ def trigger_scenarios(stock_crash, crypto_crash, crypto_rally, crypto_reserve):
 
 
 @callback(
+    Output('markets-running-state', 'data', allow_duplicate=True),
     [
         Input('markets-interest-rate', 'value'),
         Input('markets-govt-spending', 'value'),
@@ -462,7 +463,7 @@ def update_policies(interest_rate, govt_spending):
     global markets_simulation
 
     if markets_simulation is None:
-        return
+        return dash.no_update
 
     # Convert percentage to decimal
     interest_rate_decimal = interest_rate / 100
@@ -472,6 +473,9 @@ def update_policies(interest_rate, govt_spending):
 
     # Update government spending
     markets_simulation.government.set_govt_spending(govt_spending)
+
+    # Return no update (we just needed an output for callback to work)
+    return dash.no_update
 
 
 @callback(
