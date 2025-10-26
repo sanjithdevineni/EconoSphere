@@ -4,6 +4,19 @@
 
 The international trade system extends the base economic model with multi-country trade dynamics, tariffs, exchange rates, and retaliation mechanisms. This document details all mathematical formulas and economic logic used.
 
+### Recent Corrections (Option 2 Fixes)
+
+**Critical Bug Fixes:**
+1. ✅ **Trade Balance Calculation** - Now uses pre-tariff import values (tariffs are government revenue, not trade flows)
+2. ✅ **Exchange Rate Signs** - Corrected all signs to match `E = FC/DC` definition:
+   - Interest rate effect: POSITIVE (higher rates → stronger currency → higher E)
+   - PPP effect: NEGATIVE (higher inflation → weaker currency → lower E)
+   - Trade balance effect: POSITIVE (surplus → stronger currency → higher E)
+
+**Consistency Improvements:**
+3. ✅ **Retaliation Mechanism** - Trade war now sets targets; foreign tariffs converge gradually
+4. ✅ **Variable Naming** - Consistent use of `price_level` attribute throughout
+
 ---
 
 ## Table of Contents
@@ -141,8 +154,8 @@ def supply_imports(domestic_demand, domestic_price, domestic_tariff):
     # Step 1: Base demand
     base_qty = domestic_demand * import_propensity
 
-    # Step 2: Convert foreign price
-    foreign_price_dc = foreign_price / exchange_rate
+    # Step 2: Convert foreign price (using price_level attribute)
+    foreign_price_dc = price_level / exchange_rate
 
     # Step 3: Apply tariff
     effective_price = foreign_price_dc * (1 + domestic_tariff)
@@ -154,15 +167,15 @@ def supply_imports(domestic_demand, domestic_price, domestic_tariff):
     # Step 5: Actual imports
     import_qty = base_qty * competitiveness
 
-    # Step 6: Calculate values
-    import_value_pretariff = import_qty * foreign_price_dc
-    tariff_revenue = import_value_pretariff * domestic_tariff
-    total_value = import_value_pretariff + tariff_revenue
+    # Step 6: Calculate values (IMPORTANT: separate pre-tariff and tariff revenue)
+    import_value_pretariff = import_qty * foreign_price_dc  # For trade balance
+    tariff_revenue = import_value_pretariff * domestic_tariff  # For government
+    total_value = import_value_pretariff + tariff_revenue  # Total paid by consumers
 
     return {
         'import_quantity': import_qty,
-        'import_value': total_value,
-        'tariff_revenue': tariff_revenue,
+        'import_value_pretariff': import_value_pretariff,  # Use this for trade balance!
+        'tariff_revenue': tariff_revenue,  # Government revenue
         'effective_price': effective_price
     }
 ```
@@ -258,8 +271,8 @@ def demand_exports(domestic_price, domestic_production):
     # Step 3: Apply foreign tariff
     effective_price = domestic_price_fc * (1 + foreign_tariff_rate)
 
-    # Step 4: Price elasticity effect
-    price_effect = (foreign_price / effective_price) ** export_elasticity
+    # Step 4: Price elasticity effect (using foreign price_level)
+    price_effect = (price_level / effective_price) ** export_elasticity
     price_effect = max(0.1, min(3.0, price_effect))
 
     # Step 5: Calculate demand
@@ -310,22 +323,31 @@ foreign_tariff_rate = max(0, new_foreign_tariff)
 
 **Scenario 1: US imposes 25% tariff on China**
 ```
-Domestic tariff = 0.25
+Domestic tariff = 0.25 (immediate policy decision)
 China retaliation_sensitivity = 0.8
 Target Chinese tariff = 0.25 × 0.8 = 0.20 (20%)
 
+Gradual convergence:
 After step 1: 0 + 0.3 × (0.20 - 0) = 0.06 (6%)
 After step 2: 0.06 + 0.3 × (0.20 - 0.06) = 0.102 (10.2%)
 After step 3: 0.102 + 0.3 × (0.20 - 0.102) = 0.131 (13.1%)
 ...converges to 20%
 ```
 
-**Scenario 2: Trade War (50% tariffs)**
+**Scenario 2: Trade War (trigger_trade_war with intensity=0.8)**
 ```
-Domestic tariff = 0.50
-China retaliation = 0.50 × 0.8 = 0.40 (40%)
-EU retaliation = 0.50 × 0.6 = 0.30 (30%)
-ROW retaliation = 0.50 × 0.4 = 0.20 (20%)
+Domestic tariff = 0.25 × 0.8 = 0.20 (20%, set immediately)
+Retaliation sensitivities increased by 0.2:
+  - China: 0.8 → 1.0
+  - EU: 0.6 → 0.8
+  - ROW: 0.4 → 0.6
+
+Target retaliation tariffs (converge gradually):
+  - China: 0.20 × 1.0 = 0.20 (20%)
+  - EU: 0.20 × 0.8 = 0.16 (16%)
+  - ROW: 0.20 × 0.6 = 0.12 (12%)
+
+Note: Foreign tariffs converge over multiple steps via update_retaliation()
 ```
 
 ---
@@ -341,10 +363,13 @@ Higher domestic interest rates attract foreign capital → stronger domestic cur
 ```
 interest_differential = domestic_interest_rate - foreign_interest_rate
 
-interest_rate_effect = -interest_differential × 0.3
+interest_rate_effect = +interest_differential × 0.3
 ```
 
-**Sign:** Negative because higher domestic rates → LOWER exchange rate (fewer foreign currency units per domestic unit = stronger domestic currency)
+**Sign:** **POSITIVE** because our definition is `E = FC/DC` (e.g., 7 Yuan/$):
+- Higher domestic rates → stronger domestic currency
+- Stronger domestic → MORE foreign currency per domestic unit
+- Therefore E INCREASES → positive sign
 
 ### Purchasing Power Parity (PPP)
 
@@ -353,10 +378,13 @@ Higher domestic inflation → weaker domestic currency:
 ```
 inflation_differential = domestic_inflation - foreign_inflation
 
-PPP_effect = inflation_differential × 0.5
+PPP_effect = -inflation_differential × 0.5
 ```
 
-**Sign:** Positive because higher domestic inflation → HIGHER exchange rate (more foreign currency units needed = weaker domestic currency)
+**Sign:** **NEGATIVE** because:
+- Higher domestic inflation → weaker domestic currency
+- Weaker domestic → FEWER foreign currency per domestic unit
+- Therefore E DECREASES → negative sign
 
 ### Trade Balance Effect
 
@@ -365,18 +393,23 @@ Trade surplus → stronger domestic currency:
 ```
 trade_balance_domestic = foreign_imports_from_us - foreign_exports_to_us
 
-trade_balance_effect = -(trade_balance / foreign_GDP) × 0.1
+trade_balance_effect = +(trade_balance / foreign_GDP) × 0.1
 ```
 
-**Sign:** Negative because surplus → LOWER exchange rate (stronger domestic currency)
+**Sign:** **POSITIVE** because:
+- Trade surplus → stronger domestic currency
+- Stronger domestic → MORE foreign currency per domestic unit
+- Therefore E INCREASES → positive sign
 
 ### Combined Exchange Rate Change
 
 ```
-ΔE = PPP_effect + interest_rate_effect + trade_balance_effect + noise
+ΔE = -inflation_diff × 0.5 + interest_diff × 0.3 + trade_balance_effect + noise
 
 where noise ~ Uniform(-0.01, 0.01)
 ```
+
+**CORRECTED FORMULA** (signs now match our E = FC/DC definition)
 
 ### Exchange Rate Update
 
@@ -391,23 +424,23 @@ new_exchange_rate = current_exchange_rate × (1 + ΔE)
 ```python
 def update_exchange_rate(domestic_inflation, domestic_interest_rate,
                         foreign_interest_rate=0.03):
-    # Interest rate parity
+    # Interest rate parity (CORRECTED SIGN)
     interest_diff = domestic_interest_rate - foreign_interest_rate
-    interest_effect = -interest_diff * 0.3
+    interest_effect = +interest_diff * 0.3  # Positive: higher rates → higher E
 
-    # Purchasing power parity
+    # Purchasing power parity (CORRECTED SIGN)
     inflation_diff = domestic_inflation - self.inflation_rate
-    ppp_effect = inflation_diff * 0.5
+    ppp_effect = -inflation_diff * 0.5  # Negative: higher inflation → lower E
 
-    # Trade balance effect
+    # Trade balance effect (CORRECTED SIGN)
     trade_balance_domestic = (self.imports_from_domestic -
                              self.exports_to_domestic)
-    trade_effect = -(trade_balance_domestic / self.gdp) * 0.1
+    trade_effect = +trade_balance_domestic / self.gdp * 0.1  # Positive: surplus → higher E
 
     # Random fluctuation
     noise = random.uniform(-0.01, 0.01)
 
-    # Total change (max ±5% per period)
+    # Total change (max ±5% per period) - CORRECTED FORMULA
     total_change = ppp_effect + interest_effect + trade_effect + noise
     total_change = max(-0.05, min(0.05, total_change))
 
@@ -427,16 +460,20 @@ def update_exchange_rate(domestic_inflation, domestic_interest_rate,
 - Foreign GDP: $500,000
 - Current exchange rate: 7.0
 
-**Calculations:**
+**Calculations (CORRECTED):**
 ```
-interest_effect = -(0.05 - 0.03) × 0.3 = -0.006 (stronger)
-ppp_effect = (0.03 - 0.02) × 0.5 = 0.005 (weaker)
-trade_effect = -(-10,000 / 500,000) × 0.1 = 0.002 (weaker due to deficit)
-noise = 0.003 (random)
+interest_effect = +(0.05 - 0.03) × 0.3 = +0.006 (higher rates → higher E)
+ppp_effect = -(0.03 - 0.02) × 0.5 = -0.005 (higher inflation → lower E)
+trade_effect = +(-10,000 / 500,000) × 0.1 = -0.002 (deficit → lower E)
+noise = +0.003 (random)
 
-total_change = 0.005 - 0.006 + 0.002 + 0.003 = 0.004 (0.4% change)
+total_change = -0.005 + 0.006 - 0.002 + 0.003 = +0.002 (0.2% change)
 
-new_exchange_rate = 7.0 × (1 + 0.004) = 7.028
+new_exchange_rate = 7.0 × (1 + 0.002) = 7.014
+
+Interpretation: Net effect is slight strengthening (E increased slightly)
+- Interest rate effect dominates (+0.006)
+- Offset by inflation (-0.005) and trade deficit (-0.002)
 ```
 
 ---
@@ -478,8 +515,13 @@ metrics.net_trade_quantity = net_trade_quantity
 ### Trade Balance
 
 ```
-trade_balance = total_export_value - total_import_value
+trade_balance = total_export_value - total_import_value_pretariff
 ```
+
+**IMPORTANT:** Trade balance uses **pre-tariff import value** because:
+- Tariffs are domestic government revenue, NOT payment to foreign exporters
+- Trade balance measures actual flow of goods/services between countries
+- Tariff revenue is booked separately as government tax revenue
 
 **Interpretation:**
 - Positive: Trade surplus (exports > imports)
@@ -531,20 +573,28 @@ total_tariff_revenue = sum(tariff_revenue_per_country)
 When triggered with intensity `I`:
 
 ```python
+# Domestic imposes tariffs immediately (policy decision)
 domestic_tariff = 0.25 × I  # Up to 25% tariffs
-```
 
-For each foreign country:
-```python
-foreign_tariff = 0.20 × I  # Immediate retaliation
-retaliation_sensitivity = min(1.0, current_sensitivity + 0.2)  # Become more aggressive
+# Foreign countries become more aggressive (higher sensitivity)
+for foreign_sector in foreign_sectors:
+    retaliation_sensitivity = min(1.0, current_sensitivity + 0.2)
+    # Foreign tariffs converge GRADUALLY via update_retaliation()
+    # Target = domestic_tariff × retaliation_sensitivity
 ```
 
 **Example:** Intensity = 1.0 (full trade war)
-- Domestic tariff: 25%
-- China retaliates: 20%
-- EU retaliates: 20%
-- ROW retaliates: 20%
+- Domestic tariff: 25% (immediate)
+- Retaliation sensitivities:
+  - China: 0.8 → 1.0
+  - EU: 0.6 → 0.8
+  - ROW: 0.4 → 0.6
+- Target foreign tariffs (converge gradually over multiple steps):
+  - China: 25% × 1.0 = 25%
+  - EU: 25% × 0.8 = 20%
+  - ROW: 25% × 0.6 = 15%
+
+**Key difference:** Foreign retaliation is NOT instant - it builds up gradually!
 
 ### Free Trade Agreement (FTA)
 
