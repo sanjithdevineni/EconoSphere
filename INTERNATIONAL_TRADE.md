@@ -778,12 +778,3 @@ Since the base model uses scaled values (representative agents):
 | Aggregate Flows | `simulation/trade_economy_model.py` | `_calculate_trade_flows()` |
 | Policy Scenarios | `simulation/trade_economy_model.py` | `trigger_trade_war()`, `trigger_free_trade_agreement()` |
 
----
-
-## Version History
-
-- **v1.0** (2025-01-XX): Initial Tier 3 implementation with multi-country trade, tariffs, retaliation, and exchange rates.
-
----
-
-**End of Documentation**

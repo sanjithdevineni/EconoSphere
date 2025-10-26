@@ -1,7 +1,11 @@
 # EconoSphere - Macroeconomic Simulator
 
+### Watch the economy ripple with every decision.
+
 Simulates entire economies with autonomous agents (consumers, firms, policies, central bank) to test economic outcomes or business strategies.
 Takes into account the impact of tariffs, current trends and news, government crypto-currency reserves and relationships between different markets. 
+
+## Visit the App: [EconoSphere](https://econosphere.azurewebsites.net)
 
 ## 🌟 Features
 
