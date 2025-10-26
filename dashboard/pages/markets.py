@@ -178,8 +178,41 @@ def layout(**kwargs):
                                 html.Small("Government buys crypto!", className="text-muted d-block text-center")
                             ], width=3),
                         ]),
+                        html.Hr(),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Button(
+                                    "🤖 Generate AI Insights",
+                                    id='generate-ai-insights',
+                                    color='info',
+                                    outline=True,
+                                    className="w-100"
+                                ),
+                                html.Small("One-time AI analysis of simulation", className="text-muted d-block text-center")
+                            ], width=12),
+                        ], className="mt-2"),
                     ])
                 ])
+            ])
+        ], className="mb-3"),
+
+        # === AI INSIGHTS DISPLAY ===
+        dbc.Row([
+            dbc.Col([
+                dbc.Collapse(
+                    dbc.Card([
+                        dbc.CardHeader(html.H5("🤖 AI Market Analysis")),
+                        dbc.CardBody([
+                            dcc.Loading(
+                                id="ai-insights-loading",
+                                type="default",
+                                children=html.Div(id='ai-insights-content', className="p-3")
+                            )
+                        ])
+                    ]),
+                    id="ai-insights-collapse",
+                    is_open=False,
+                )
             ])
         ], className="mb-3"),
 
@@ -715,3 +748,149 @@ def create_empty_dashboard():
         "$0", "Not enabled",
         empty_fig, empty_fig, empty_fig, empty_fig, empty_fig, empty_fig, empty_fig
     )
+
+
+@callback(
+    [
+        Output('ai-insights-collapse', 'is_open'),
+        Output('ai-insights-content', 'children'),
+    ],
+    Input('generate-ai-insights', 'n_clicks'),
+    prevent_initial_call=True
+)
+def generate_ai_insights(n_clicks):
+    """Generate one-time AI insights about the simulation"""
+    global markets_simulation
+
+    if markets_simulation is None:
+        return True, html.Div([
+            html.P("⚠️ No simulation running. Start the simulation first!", className="text-warning")
+        ])
+
+    # Gather comprehensive data
+    metrics = markets_simulation.metrics.latest_metrics
+    history = markets_simulation.market_history
+
+    if not history or len(history) < 5:
+        return True, html.Div([
+            html.P("⚠️ Not enough data yet. Run simulation for at least 5 steps!", className="text-warning")
+        ])
+
+    # Calculate summary statistics
+    current_step = markets_simulation.current_step
+
+    # Stock market stats
+    stock_initial = history[0].get('stock_index', 100) if history else 100
+    stock_current = metrics.get('stock_index', 100)
+    stock_change = ((stock_current - stock_initial) / stock_initial) * 100
+    stock_high = max(h.get('stock_index', 100) for h in history)
+    stock_low = min(h.get('stock_index', 100) for h in history)
+
+    # Crypto stats
+    crypto_initial = history[0].get('crypto_price', 50000) if history else 50000
+    crypto_current = metrics.get('crypto_price', 50000)
+    crypto_change = ((crypto_current - crypto_initial) / crypto_initial) * 100
+    crypto_high = max(h.get('crypto_price', 50000) for h in history)
+    crypto_low = min(h.get('crypto_price', 50000) for h in history)
+
+    # Economic stats
+    inflation_avg = sum(h.get('inflation_rate', 0.02) for h in history) / len(history) * 100
+    rate_avg = sum(h.get('interest_rate', 0.03) for h in history) / len(history) * 100
+    unemployment_avg = sum(h.get('unemployment_rate', 0.05) for h in history) / len(history) * 100
+
+    # Crypto adoption
+    adoption_initial = history[0].get('crypto_adoption_rate', 0.01) if history else 0.01
+    adoption_current = metrics.get('crypto_adoption_rate', 0.01)
+    adoption_change = (adoption_current - adoption_initial) * 100
+
+    # Government reserve
+    govt_reserve = metrics.get('govt_crypto_reserve_value', 0)
+
+    # Generate narrative
+    insights = []
+
+    insights.append(html.H6("📊 Simulation Summary", className="mt-3 mb-3"))
+    insights.append(html.P(f"Analysis of {current_step} simulation steps from start to present."))
+
+    insights.append(html.H6("📈 Stock Market Performance", className="mt-3"))
+    insights.append(html.Ul([
+        html.Li(f"Total Return: {stock_change:+.1f}% (from {stock_initial:.1f} to {stock_current:.1f})"),
+        html.Li(f"Range: {stock_low:.1f} (low) to {stock_high:.1f} (high)"),
+        html.Li(f"Volatility: {((stock_high - stock_low) / stock_initial * 100):.1f}%"),
+    ]))
+
+    insights.append(html.H6("₿ Cryptocurrency Performance", className="mt-3"))
+    insights.append(html.Ul([
+        html.Li(f"Total Return: {crypto_change:+.1f}% (from ${crypto_initial:,.0f} to ${crypto_current:,.0f})"),
+        html.Li(f"Range: ${crypto_low:,.0f} (low) to ${crypto_high:,.0f} (high)"),
+        html.Li(f"Volatility: {((crypto_high - crypto_low) / crypto_initial * 100):.1f}%"),
+        html.Li(f"Adoption Growth: {adoption_change:+.2f} percentage points (now {adoption_current*100:.1f}%)"),
+    ]))
+
+    insights.append(html.H6("🏦 Macro Economic Environment", className="mt-3"))
+    insights.append(html.Ul([
+        html.Li(f"Average Inflation: {inflation_avg:.2f}%"),
+        html.Li(f"Average Interest Rate: {rate_avg:.2f}%"),
+        html.Li(f"Average Unemployment: {unemployment_avg:.1f}%"),
+    ]))
+
+    if govt_reserve > 0:
+        insights.append(html.H6("🏛️ Government Crypto Reserve", className="mt-3"))
+        insights.append(html.P(f"Government holds ${govt_reserve:,.0f} in cryptocurrency reserves.", className="text-primary fw-bold"))
+
+    # Key insights
+    insights.append(html.H6("🔍 Key Insights", className="mt-3"))
+    key_insights = []
+
+    if crypto_change > stock_change + 10:
+        key_insights.append(html.Li("🚀 Cryptocurrency significantly outperformed stocks, likely due to inflation hedge narrative or speculative momentum."))
+    elif stock_change > crypto_change + 10:
+        key_insights.append(html.Li("📊 Stocks outperformed crypto, suggesting risk-off sentiment or high interest rate environment."))
+    else:
+        key_insights.append(html.Li("⚖️ Stocks and crypto moved in tandem, showing correlated risk-on/risk-off behavior."))
+
+    if inflation_avg > 4:
+        key_insights.append(html.Li(f"🔥 High inflation ({inflation_avg:.1f}%) likely drove crypto adoption as inflation hedge."))
+
+    if rate_avg > 5:
+        key_insights.append(html.Li(f"📉 High interest rates ({rate_avg:.1f}%) created headwinds for both asset classes."))
+
+    if adoption_change > 5:
+        key_insights.append(html.Li(f"📱 Crypto adoption surged {adoption_change:.1f}pp - network effects accelerating."))
+
+    if govt_reserve > 0:
+        key_insights.append(html.Li("🏛️ Government crypto reserve provided legitimacy boost to cryptocurrency markets."))
+
+    crypto_volatility = ((crypto_high - crypto_low) / crypto_initial * 100)
+    stock_volatility = ((stock_high - stock_low) / stock_initial * 100)
+    if crypto_volatility > stock_volatility * 2:
+        key_insights.append(html.Li(f"⚡ Crypto was {crypto_volatility/stock_volatility:.1f}x more volatile than stocks - typical for emerging digital assets."))
+
+    insights.append(html.Ul(key_insights))
+
+    # Correlation analysis
+    if len(history) > 10:
+        insights.append(html.H6("📊 Correlation Analysis", className="mt-3"))
+
+        # Calculate simple correlation between inflation and crypto
+        inflation_series = [h.get('inflation_rate', 0.02) * 100 for h in history]
+        crypto_series = [h.get('crypto_price', 50000) for h in history]
+
+        # Simple trend detection
+        if inflation_avg > 3 and crypto_change > 0:
+            insights.append(html.P("✅ Positive inflation-crypto correlation observed: crypto acted as inflation hedge."))
+        elif rate_avg > 5 and crypto_change < 0:
+            insights.append(html.P("✅ Negative rate-crypto correlation observed: high rates suppressed crypto prices."))
+        else:
+            insights.append(html.P("ℹ️ Mixed correlations observed - multiple macro factors at play."))
+
+    insights.append(html.Hr())
+    insights.append(html.P([
+        html.Small([
+            "📝 Analysis based on ",
+            html.Strong(f"{current_step} simulation steps. "),
+            "This is a rule-based summary. Configure Azure OpenAI in .env for AI-powered insights."
+        ], className="text-muted")
+    ]))
+
+    return True, html.Div(insights)
