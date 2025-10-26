@@ -294,6 +294,7 @@ def update_sliders_from_url(search, advisor_policy):
     welfare = config.INITIAL_WELFARE_PAYMENT
     govt_spending = config.INITIAL_GOVT_SPENDING
 
+    # Check if triggered by policy advisor with valid data
     ctx = dash.callback_context
     if ctx.triggered and ctx.triggered[0]['prop_id'].startswith('policy-advisor-policy'):
         if advisor_policy:
@@ -303,7 +304,7 @@ def update_sliders_from_url(search, advisor_policy):
                 max(0.0, min(2000.0, advisor_policy.get('welfare', welfare))),
                 max(0.0, min(50000.0, advisor_policy.get('govt_spending', govt_spending))),
             )
-        return tax_rate, interest_rate, welfare, govt_spending
+        # If advisor_policy is empty, fall through to check URL parameters
 
     if search:
         # Parse query parameters
