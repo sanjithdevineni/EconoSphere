@@ -1,424 +1,658 @@
-# MacroEcon Simulator - Technical Architecture
+# EconoSphere - Technical Architecture
+
+## System Overview
+
+EconoSphere is a multi-page, agent-based macroeconomic simulator with international trade, AI-powered news analysis, and real-world calibration capabilities.
+
+## Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                  MULTI-PAGE DASHBOARD (Dash)                    │
+│  ┌────────────┬─────────────┬─────────────┬──────────────────┐ │
+│  │ Simulation │ News        │ Validation  │ International    │ │
+│  │ (/)        │ Insights    │ (/validate) │ Trade (/trade)   │ │
+│  │            │ (/news)     │             │                  │ │
+│  └────────────┴─────────────┴─────────────┴──────────────────┘ │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+          ┌──────────────┴──────────────┐
+          │                             │
+  ┌───────▼────────┐          ┌─────────▼──────────┐
+  │ EconomyModel   │          │TradeEconomyModel   │
+  │ (Domestic)     │          │(Multi-Country)     │
+  └────────┬───────┘          └──────────┬─────────┘
+           │                             │
+    ┌──────┴──────┐         ┌────────────┴──────────────┐
+    │             │         │                           │
+┌───▼──────┐  ┌──▼────┐ ┌──▼────────┐    ┌──────────────▼─────┐
+│Consumers │  │Firms  │ │Government │    │ Foreign Sectors    │
+│(100+)    │  │(10+)  │ │Central    │    │  - China           │
+│          │  │       │ │Bank       │    │  - EU              │
+└──────────┘  └───────┘ └───────────┘    │  - Rest of World   │
+                                         └────────────────────┘
+           │
+    ┌──────┴────────────┐
+    │                   │
+┌───▼──────────┐  ┌─────▼────────────┐
+│ Markets      │  │ Economic Metrics │
+│ - Labor      │  │ - GDP            │
+│ - Goods      │  │ - Unemployment   │
+│ - Capital    │  │ - Inflation      │
+│ - FX         │  │ - Gini           │
+└──────────────┘  └──────────────────┘
+
+┌─────────────────────────────────────┐
+│     EXTERNAL INTEGRATIONS           │
+│  - World Bank API (data/calibrate)  │
+│  - NewsAPI (real-time news)         │
+│  - Azure OpenAI (AI analysis)       │
+└─────────────────────────────────────┘
+```
 
 ## Project Structure
 
 ```
-macroecon/
+EconoSphere/
+├── agents/                          # Agent implementations
+│   ├── consumer.py                 # Worker/household agents
+│   ├── firm.py                     # Business agents
+│   ├── government.py               # Fiscal authority
+│   ├── central_bank.py             # Monetary authority
+│   └── foreign_sector.py           # Trading partner countries
 │
-├── agents/                      # Agent-based models
-│   ├── consumer.py             # Consumer agents (workers, spenders)
-│   ├── firm.py                 # Firm agents (employers, producers)
-│   ├── government.py           # Fiscal policy authority
-│   └── central_bank.py         # Monetary policy authority
+├── simulation/                      # Core simulation logic
+│   ├── economy_model.py            # Base economic model
+│   ├── trade_economy_model.py      # Extended with trade/FX
+│   ├── markets.py                  # Market clearing algorithms
+│   └── metrics.py                  # Economic indicator calculation
 │
-├── simulation/                  # Core simulation engine
-│   ├── economy_model.py        # Main simulation orchestrator
-│   ├── markets.py              # Labor & goods market mechanisms
-│   └── metrics.py              # Economic indicators calculator
+├── dashboard/                       # Multi-page web UI
+│   ├── app.py                      # Main Dash application
+│   └── pages/                      # Individual dashboard pages
+│       ├── simulation.py           # Main simulator (/)
+│       ├── news_insights.py        # AI news analysis (/news)
+│       ├── validation.py           # Data validation (/validate)
+│       └── trade.py                # Trade simulation (/trade)
 │
-├── dashboard/                   # Web interface
-│   └── app.py                  # Plotly Dash application
+├── data/                            # Data integration layer
+│   ├── world_bank.py               # World Bank API client
+│   ├── news_client.py              # NewsAPI integration
+│   ├── news_analyzer.py            # AI-powered news analysis
+│   └── calibration/                # ML calibration system
+│       ├── world_bank_client.py    # Enhanced WB client
+│       ├── parameter_fit.py        # ML parameter fitting
+│       └── scenarios.py            # Scenario generation
 │
-├── data/                        # External data integration
-│   └── world_bank.py           # World Bank API client
+├── narrative/                       # AI narrative generation
+│   └── ai_narrator.py              # Real-time news generation
 │
-├── utils/                       # Utilities
-│   └── scenarios.py            # Pre-configured scenarios
+├── scripts/                         # Utility scripts
+│   └── calibrate_economy.py        # Calibration CLI tool
 │
-├── config.py                   # Configuration parameters
-├── main.py                     # Entry point
-└── test_simulation.py          # Test script
-
+├── config.py                        # Global configuration
+├── main.py                         # Application entry point
+└── requirements.txt                # Python dependencies
 ```
 
-## System Architecture
+## Agent Types & Behaviors
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    DASHBOARD LAYER (Dash)                    │
-│  - Policy Controls (sliders for tax, interest rate, etc.)   │
-│  - Real-time Charts (GDP, unemployment, inflation, Gini)    │
-│  - Scenario Buttons (recession, inflation, reset)           │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       │ User interactions trigger policy changes
-                       │
-┌──────────────────────▼──────────────────────────────────────┐
-│                   SIMULATION ENGINE                          │
-│  ┌────────────────────────────────────────────────────────┐ │
-│  │  EconomyModel (Mesa-based)                             │ │
-│  │  - Manages all agents                                  │ │
-│  │  - Executes time steps                                 │ │
-│  │  - Applies policy changes                              │ │
-│  └────────────────────────────────────────────────────────┘ │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-        ┌──────────────┼──────────────┐
-        │              │              │
-┌───────▼──────┐  ┌───▼────┐  ┌──────▼────────┐
-│ LABOR MARKET │  │ AGENTS │  │ GOODS MARKET  │
-│              │  │        │  │               │
-│ - Match      │  │ 100+   │  │ - Production  │
-│   workers    │  │ Consum │  │ - Pricing     │
-│   to firms   │  │ ers    │  │ - Supply/     │
-│ - Wage       │  │        │  │   Demand      │
-│   discovery  │  │ 10     │  │   matching    │
-│              │  │ Firms  │  │               │
-└──────────────┘  │        │  └───────────────┘
-                  │ 1 Govt │
-                  │        │
-                  │ 1 CB   │
-                  └────┬───┘
-                       │
-                       │ Generate metrics
-                       │
-              ┌────────▼────────┐
-              │ METRICS CALC    │
-              │ - GDP           │
-              │ - Unemployment  │
-              │ - Inflation     │
-              │ - Gini          │
-              └─────────────────┘
-```
+### Consumer Agent
 
-## Agent Interactions
+**Purpose**: Represents workers/households in the economy
 
-### Time Step Flow
+**State Variables**:
+- `wealth`: Current financial assets
+- `income`: Wage from employment
+- `employed`: Employment status (boolean)
+- `employer`: Reference to employing firm
 
-Each simulation step executes in this order:
+**Decision Logic**:
+1. **Job Seeking**: Unemployed consumers apply to firms with openings
+2. **Consumption**: Spend portion of wealth (MPC ≈ 0.9)
+3. **Tax Payment**: Pay income taxes to government
+4. **Welfare Receipt**: Receive transfers if unemployed
 
-```
-1. LABOR DEMAND
-   Firms → Central Bank: "What's the interest rate?"
-   Firms calculate: "How many workers can we afford?"
+**Key Parameters**:
+- `CONSUMER_WEALTH_SPEND_RATE`: Marginal propensity to consume
+- `INITIAL_WEALTH`: Starting wealth endowment
 
-2. LABOR MARKET CLEARING
-   LaborMarket matches unemployed workers to firms
-   Result: Employment rate, market wage
+### Firm Agent
 
-3. FISCAL POLICY
-   Government → Consumers: "Pay taxes"
-   Government → Unemployed: "Here's welfare"
+**Purpose**: Represents businesses that hire, produce, and invest
 
-4. CONSUMPTION
-   Consumers → GoodsMarket: "I want to buy X goods at price P"
+**State Variables**:
+- `capital`: Physical capital stock
+- `cash`: Liquid financial assets
+- `employees`: List of hired consumers
+- `production`: Current output level
+- `price`: Product price
+- `inventory`: Unsold goods
+- `labor_demand`: Desired workforce size
 
-5. PRODUCTION
-   Firms → GoodsMarket: "I'm producing Y goods"
+**Decision Logic**:
+1. **Labor Demand**: Calculate workers needed based on expected demand, interest rates
+2. **Production**: Output = A × K^α × L^γ (Cobb-Douglas)
+3. **Pricing**: Adjust based on excess demand/supply
+4. **Investment**: Expand capital when profitable and rates are low
+5. **Hiring/Firing**: Adjust workforce gradually based on demand
 
-6. GOODS MARKET CLEARING
-   Match supply/demand, adjust prices
-   Result: GDP, inflation, price level
+**Key Parameters**:
+- `productivity` (A): Total factor productivity
+- `gamma` (γ): Returns to scale (0.7 typical)
+- `depreciation_rate` (δ): Capital decay (5% per period)
 
-7. PAYMENTS
-   Firms → Workers: "Here's your wage"
-   Firms calculate profit/loss
+### Government Agent
 
-8. INVESTMENT
-   Firms → Central Bank: "If rates are low, I'll invest"
+**Purpose**: Fiscal policy authority
 
-9. POLICY ADJUSTMENT
-   Central Bank (if auto-policy): Adjust rates based on inflation
-   Government: Calculate budget balance/debt
+**State Variables**:
+- `tax_revenue`: Collected taxes (VAT, payroll, corporate)
+- `total_spending`: Government expenditure
+- `debt`: Accumulated deficits
 
-10. METRICS
-    Calculate and record all economic indicators
-```
+**Decision Logic**:
+1. **Tax Collection**: VAT on consumption, payroll on wages, corporate on profits
+2. **Welfare Transfers**: Payments to unemployed
+3. **Government Spending**: Direct demand injection
+4. **Budget Accounting**: debt_t+1 = debt_t + (spending - revenue)
 
-## Agent Behaviors
+**Policy Levers** (user-controlled):
+- `vat_rate`: 0-50%
+- `payroll_rate`: 0-50%
+- `corporate_rate`: 0-50%
+- `welfare_payment`: $0-$2000
+- `govt_spending`: $0-$50,000
 
-### Consumer
-**State**: wealth, income, employed, employer
-**Decisions**:
-- How much to consume (based on propensity to consume)
-- Seeks employment when unemployed
+### Central Bank Agent
 
-**Interactions**:
-- Sells labor → Firms
-- Pays taxes → Government
-- Receives welfare → Government (if unemployed)
-- Buys goods → Firms
+**Purpose**: Monetary policy authority
 
-### Firm
-**State**: capital, employees, inventory, price, wage
-**Decisions**:
-- How many workers to hire (based on expected demand, interest rates)
-- What price to charge (based on supply/demand)
-- Whether to invest (based on profitability, interest rates)
+**State Variables**:
+- `interest_rate`: Lending rate to firms
+- `inflation_target`: Desired inflation (2%)
+- `auto_policy`: Taylor Rule enabled/disabled
 
-**Interactions**:
-- Hires labor → Consumers
-- Pays wages → Consumers
-- Sells goods → Consumers
-- Checks borrowing cost → Central Bank
+**Decision Logic**:
+1. **Manual Mode**: User sets interest rate
+2. **Auto Mode (Taylor Rule)**:
+   ```
+   r_t = r* + 1.5(π_t - π*) - 0.5(u_t - u*)
+   ```
+   Where:
+   - r* = neutral rate (3%)
+   - π_t = current inflation
+   - π* = target inflation (2%)
+   - u_t = unemployment
+   - u* = natural rate (5%)
 
-### Government
-**State**: tax_rate, welfare_payment, govt_spending, debt
-**Decisions**:
-- Fiscal policy settings (controlled by user/dashboard)
+**Policy Transmission**:
+- Higher rates → Firms invest less → Lower demand → Lower inflation
 
-**Interactions**:
-- Collects taxes → Consumers
-- Distributes welfare → Unemployed Consumers
-- Injects spending → Economy (adds to aggregate demand)
+### Foreign Sector Agent (NEW)
 
-### Central Bank
-**State**: interest_rate, money_supply, inflation_target
-**Decisions**:
-- Interest rate (user-controlled or Taylor Rule auto-policy)
-- Quantitative easing (emergency policy)
+**Purpose**: Represents trading partner country
 
-**Interactions**:
-- Sets borrowing cost → Firms
-- Optionally: Auto-adjusts rates based on inflation/unemployment
+**State Variables**:
+- `gdp`: Foreign economy size
+- `price_level`: Foreign price level
+- `exchange_rate`: E = Foreign Currency / Domestic Currency
+- `tariff_rate_on_imports`: Retaliatory tariff
+- `import_propensity`: Share of domestic demand from this country
+- `exports_to_domestic`: Value sold to domestic economy
+- `imports_from_domestic`: Value bought from domestic economy
+
+**Decision Logic**:
+1. **Supply Imports**: Provide goods based on competitiveness and tariffs
+2. **Demand Exports**: Buy domestic goods based on prices and foreign GDP
+3. **Retaliate**: Gradually adjust tariffs in response to domestic tariffs
+4. **Exchange Rate Dynamics**:
+   ```
+   ΔE = -0.5(π_dom - π_for) + 0.3(r_dom - r_for) + 0.1(TB/GDP)
+   ```
+5. **Economic Evolution**: GDP and price level grow/evolve over time
+
+**Countries**:
+- **China**: GDP=$500k, import_propensity=12%, E₀=7.0 (Yuan/$)
+- **EU**: GDP=$600k, import_propensity=8%, E₀=0.9 (€/$)
+- **ROW**: GDP=$400k, import_propensity=6%, E₀=1.0
 
 ## Market Mechanisms
 
 ### Labor Market
-**Purpose**: Match workers to jobs, determine wages
 
-**Algorithm**:
-1. Firms post job openings (labor_demand)
-2. Unemployed workers apply
-3. Random matching until jobs filled
+**Clearing Algorithm**:
+1. Firms post `labor_demand`
+2. Unemployed consumers apply randomly
+3. Match until all openings filled or no applicants remain
 4. Calculate unemployment rate
-5. Adjust wages based on labor market tightness
+5. Adjust wages based on tightness:
+   ```
+   wage_t+1 = wage_t × (1 + 0.1 × (labor_demand - labor_supply) / labor_supply)
+   ```
 
-**Key Dynamics**:
-- Low unemployment → Wages rise (tight labor market)
-- High unemployment → Wages fall (slack labor market)
+**Dynamics**:
+- Tight market (low unemployment) → Wages rise
+- Slack market (high unemployment) → Wages fall
 
 ### Goods Market
-**Purpose**: Match production to consumption, determine prices
 
-**Algorithm**:
-1. Consumers state quantity demanded at current price
-2. Firms produce based on workforce
-3. Market clearing: min(demand, supply)
-4. Price adjustment:
-   - Demand > Supply → Prices rise
-   - Supply > Demand → Prices fall
-5. Calculate inflation rate
+**Clearing Algorithm**:
+1. Consumers demand quantity based on wealth × MPC
+2. Firms supply based on production + inventory
+3. Trade + Imports add to supply, Exports subtract
+4. Market clears at min(demand, supply)
+5. Price adjustment:
+   ```
+   price_t+1 = price_t × [1 + θ_d × excess_demand + θ_c × cost_change]
+   ```
+   - θ_d = 0.1 (demand sensitivity)
+   - θ_c = 0.1 (cost sensitivity)
 
-**Key Dynamics**:
-- Excess demand → Inflation
-- Excess supply → Deflation
+**Dynamics**:
+- Excess demand → Prices rise (inflation)
+- Excess supply → Prices fall (deflation)
 
-## Economic Metrics
+### Capital Market (Trade Model)
 
-### GDP (Gross Domestic Product)
-**Formula**: Sum of firm revenues
-**Interpretation**: Total economic output
+**Purpose**: Balance trade deficits/surpluses via financial flows
 
-### Unemployment Rate
-**Formula**: (Unemployed / Total Labor Force) × 100
-**Interpretation**: % of workers without jobs
-
-### Inflation Rate
-**Formula**: (Current Price - Previous Price) / Previous Price × 100
-**Interpretation**: Rate of price increase
-
-### Gini Coefficient
-**Formula**: Wealth distribution inequality measure (0-1)
-**Interpretation**:
-- 0 = Perfect equality
-- 1 = Perfect inequality
-
-## Policy Transmission Mechanisms
-
-### Fiscal Policy (Government)
-
-**Tax Rate** ↑:
+**Mechanism**:
 ```
-Higher taxes
-  → Consumers have less disposable income
-  → Lower consumption
-  → Lower demand for goods
-  → Firms produce less
-  → GDP ↓, Unemployment ↑
+Capital Inflow = -Trade Balance + Interest Differential Effect
 ```
 
-**Welfare Payments** ↑:
-```
-Higher welfare
-  → Unemployed have more income
-  → Higher consumption
-  → Higher demand
-  → Firms produce more
-  → GDP ↑, Unemployment ↓
-  (But also: Government debt ↑)
-```
+**Dynamics**:
+- Trade deficit → Capital inflows (foreign investment finances imports)
+- Higher domestic rates → Attract more capital
+- Capital flows affect exchange rates and foreign reserves
 
-**Government Spending** ↑:
-```
-More govt spending
-  → Direct demand injection
-  → Firms produce more
-  → Hire more workers
-  → GDP ↑, Unemployment ↓
-  (But also: Budget deficit ↑)
-```
+### FX Market (Trade Model)
 
-### Monetary Policy (Central Bank)
+**Central Bank Intervention**:
+- Monitors exchange rate deviations from baseline
+- Intervention threshold: ±15%
+- Actions:
+  - E too high (weak currency) → Sell reserves, buy domestic currency
+  - E too low (strong currency) → Buy reserves, sell domestic currency
+- Limited by foreign reserve availability
 
-**Interest Rate** ↑:
-```
-Higher rates
-  → Firms face higher borrowing costs
-  → Less investment
-  → Hire fewer workers
-  → Unemployment ↑
-  → Lower consumer spending
-  → Lower demand → Lower inflation
-```
+**Effects**:
+- Stabilizes exchange rates
+- Prevents catastrophic currency collapses
+- Mimics real central bank behavior
 
-**Interest Rate** ↓:
-```
-Lower rates
-  → Cheaper borrowing
-  → Firms invest more
-  → Hire more workers
-  → Unemployment ↓
-  → More consumer spending
-  → Higher demand → Higher inflation (risk)
-```
+## Economic Models
+
+### Base Economy Model (economy_model.py)
+
+**Closed economy** with:
+- Consumers, Firms, Government, Central Bank
+- Labor and Goods markets
+- Fiscal and Monetary policy
+- No international trade
+
+**Step Sequence**:
+1. Firms determine labor demand
+2. Labor market clears
+3. Firms produce
+4. Consumers demand goods
+5. Goods market clears
+6. Payments (wages, profits)
+7. Firms invest
+8. Government collects taxes, pays welfare
+9. Central Bank adjusts policy (if auto)
+10. Calculate metrics
+
+### Trade Economy Model (trade_economy_model.py)
+
+**Extends base model** with:
+- Multiple foreign sector agents
+- Import/export flows
+- Tariff policies
+- Exchange rate dynamics
+- Capital account balancing
+- Central bank FX intervention
+
+**Additional Steps**:
+1. Calculate trade flows (imports, exports, tariffs)
+2. Apply capital flows
+3. Central bank FX intervention
+4. Update export capacity
+5. Track trade history
+
+**Key Features**:
+- Realistic import propensities (26% total)
+- Dynamic export capacity growth
+- Trade deficit dampening feedback
+- Gradual tariff retaliation
+
+## Dashboard Pages
+
+### 1. Simulation Page (/)
+
+**Components**:
+- Policy control sliders (taxes, rates, spending)
+- Real-time charts (GDP, unemployment, inflation, Gini)
+- Scenario buttons (recession, inflation)
+- Current metrics display
+- AI narrative feed (if enabled)
+
+**State Management**:
+- dcc.Interval for auto-updates
+- dcc.Store for simulation state
+- Callbacks for user interactions
+
+### 2. News Insights Page (/news)
+
+**Components**:
+- News article cards with AI analysis
+- Timeframe selector
+- Refresh button
+- "Simulate This Policy" buttons
+
+**AI Analysis Pipeline**:
+1. Fetch articles from NewsAPI
+2. Send to Azure OpenAI for analysis
+3. Extract policy type, sentiment, impacts
+4. Generate parameter suggestions
+5. Display with confidence scores
+
+**Fallback**: Heuristic analysis if AI unavailable
+
+### 3. Validation Page (/validate)
+
+**Components**:
+- Simulation vs Actual data charts
+- Trend forecasting
+- Diagnostic metrics (R², MAE)
+- Calibrated parameters display
+
+**Data Flow**:
+1. Fetch real data from World Bank API
+2. Run simulation
+3. Compare trajectories
+4. Calculate validation metrics
+5. Display ML-fitted parameters
+
+### 4. International Trade Page (/trade)
+
+**Components**:
+- Tariff rate slider
+- Trade scenario buttons (war, FTAs)
+- 5 trade-specific charts:
+  - Trade balance over time
+  - Imports/Exports/Tariff revenue
+  - Exchange rates (3 currencies)
+  - Country-specific flows
+  - Retaliation tariff tracking
+- Trading partner status cards
+
+**Real-Time Simulation**:
+- Separate TradeEconomyModel instance
+- Independent controls
+- Full trade dynamics
 
 ## Data Integration
 
 ### World Bank API
-**Purpose**: Calibrate simulation with real-world data
 
-**Indicators Fetched**:
-- GDP
-- Unemployment rate
-- Inflation rate
-- Gini coefficient
-- Tax revenue (% GDP)
-- Government debt (% GDP)
+**Purpose**: Real economic data for calibration and validation
+
+**Fetched Indicators**:
+- GDP (`NY.GDP.MKTP.CD`)
+- Unemployment (`SL.UEM.TOTL.ZS`)
+- Inflation (`FP.CPI.TOTL.ZG`)
+- Tax revenue (`GC.TAX.TOTL.GD.ZS`)
+- Government debt (`GC.DOD.TOTL.GD.ZS`)
 
 **Usage**:
-1. Fetch current US economic indicators
-2. Use to set initial simulation parameters
-3. Validate simulation output against real data
+1. `scripts/calibrate_economy.py` fetches historical data
+2. ML models fit parameters to match real trends
+3. Output JSON with calibrated values
+4. Load via `ECON_CALIBRATION_FILE` environment variable
 
-## Technology Stack
+### NewsAPI
 
-### Core Simulation
-- **Mesa**: Agent-based modeling framework
-  - Provides Agent base class
-  - Scheduler for agent activation
-  - Model structure
-- **NumPy**: Numerical computations
-- **Pandas**: Data manipulation (for World Bank API)
+**Purpose**: Real-time economic policy news
 
-### Dashboard
-- **Plotly Dash**: Web dashboard framework
-  - React-based UI components
-  - Real-time chart updates
-  - Callback-based interactivity
-- **Dash Bootstrap Components**: UI styling
+**Query**: `"federal reserve" OR "interest rates" OR "tariffs" OR "economic policy"`
 
-### Data
-- **wbgapi**: World Bank API client
-- **requests**: HTTP client for any additional APIs
+**Rate Limits**: 100 requests/day (free tier)
 
-### Development
-- **Python 3.8+**
-- Standard library: random, typing, etc.
+**Fallback**: Sample news articles if API key missing
 
-## Performance Considerations
+### Azure OpenAI
 
-### Scalability
-- **Current**: 100 consumers, 10 firms runs smoothly
-- **Bottleneck**: Agent.step() calls in each time step
-- **Optimization strategies**:
-  1. Reduce agent count for faster simulation
-  2. Batch operations where possible
-  3. Use NumPy arrays instead of loops
-  4. Pre-compute market clearing instead of iterative
+**Purpose**: AI-powered analysis and narrative generation
 
-### Update Frequency
-- **Dashboard refresh**: 1000ms (1 second) by default
-- **Simulation step**: ~50-100ms with current agent count
-- **Trade-off**: More agents = realism, Fewer = speed
+**Models Used**:
+- GPT-4 for news analysis
+- GPT-3.5 for narrative generation
+
+**Features**:
+1. **News Analysis**: Extract policy impacts from articles
+2. **Narrative Generation**: Create economic news from simulation events
+3. **Parameter Extraction**: Suggest simulation settings from news
+
+**Fallback**: Heuristic rule-based analysis if API unavailable
+
+## ML Calibration System
+
+### Parameter Fitting (parameter_fit.py)
+
+**Purpose**: Fit model parameters to match real economic data
+
+**Algorithm**:
+1. Fetch historical time series (15+ years)
+2. For each parameter:
+   - Train regression model on data
+   - Predict parameter value
+   - Validate with R², MAE
+3. Output calibrated parameters
+
+**Fitted Parameters**:
+- `mpc`: Marginal propensity to consume
+- `tfp_a`: Total factor productivity
+- `gamma`: Returns to scale
+- `depreciation`: Capital depreciation rate
+- `unemployment_rate`: Baseline unemployment
+- `gdp_per_capita`: Per-capita output
+
+**Validation Metrics**:
+- R² (coefficient of determination)
+- MAE (mean absolute error)
+- RMSE (root mean squared error)
+
+## Advanced Features
+
+### Capital Flows
+
+**Formula**:
+```
+K_t = -TB_t + 0.5 × (r_dom - r_for) × GDP
+```
+
+Where:
+- K_t = capital inflow (positive = inflow)
+- TB_t = trade balance
+- r_dom, r_for = domestic and foreign interest rates
+
+**Purpose**: Model financial account balancing current account
+
+### FX Intervention
+
+**Trigger**: |E_t - E_baseline| / E_baseline > 0.15
+
+**Action**:
+```
+If E too high (weak currency):
+  Sell reserves = 0.1 × reserves × intervention_strength
+  E_new = E × (1 - 0.5 × intervention_strength)
+
+If E too low (strong currency):
+  Buy reserves = 0.1 × reserves × intervention_strength
+  E_new = E × (1 + 0.5 × intervention_strength)
+```
+
+**Limits**: Bounded by available foreign reserves
+
+### Export Capacity
+
+**Growth Formula**:
+```
+capacity_t+1 = capacity_t × (1 + 0.015 + balance_effect)
+```
+
+Where:
+- 0.015 = 1.5% baseline growth
+- balance_effect ∈ [-0.005, +0.005]
+
+**Cap**: Maximum 5,000 units to prevent explosions
+
+### Trade Deficit Dampening
+
+**Trigger**: 8 out of last 10 periods in deficit
+
+**Action**: Reduce all import_propensity by 10%
+
+**Purpose**: Natural market feedback to persistent imbalances
+
+## Performance & Scalability
+
+**Current Configuration**:
+- 100 consumers + 10 firms = 110+ agents
+- ~50-100ms per simulation step
+- Dashboard updates every 1000ms
+
+**Bottlenecks**:
+1. Agent.step() calls (O(n))
+2. Market clearing algorithms
+3. Metric calculations
+
+**Optimization Strategies**:
+- Reduce agent count for speed
+- Use NumPy vectorization
+- Pre-compute market equilibria
+- Batch database operations
 
 ## Extension Points
 
 ### Adding New Agent Types
-1. Create new class inheriting from `mesa.Agent`
-2. Implement `__init__` and `step` methods
-3. Add to `EconomyModel._create_agents()`
-4. Update market mechanisms if needed
 
-### Adding New Policies
-1. Add parameter to `config.py`
-2. Create setter method in `EconomyModel`
-3. Add slider in dashboard `app.py` layout
-4. Wire callback to update policy
+Example: Banking sector
+
+```python
+from mesa import Agent
+
+class Bank(Agent):
+    def __init__(self, unique_id, model):
+        super().__init__(model)
+        self.deposits = 0
+        self.loans = 0
+        self.reserves = 0
+
+    def step(self):
+        # Accept deposits from consumers
+        # Make loans to firms
+        # Manage reserve requirements
+        pass
+```
+
+Then add to `EconomyModel._create_agents()`
 
 ### Adding New Markets
-1. Create new market class in `simulation/markets.py`
-2. Implement `clear_market()` method
-3. Add to `EconomyModel.__init__()`
-4. Call in `EconomyModel.step()`
+
+Example: Asset market
+
+```python
+class AssetMarket:
+    def clear_market(self, buyers, sellers):
+        # Match asset buyers/sellers
+        # Determine equilibrium price
+        # Execute trades
+        pass
+```
+
+Then call in `EconomyModel.step()`
 
 ### Adding New Metrics
-1. Add calculation method to `MetricsCalculator`
-2. Add to history dict
-3. Call in `get_all_metrics()`
-4. Create chart in dashboard
 
-## Known Limitations
+Example: Capacity utilization
 
-1. **Simplified markets**: No price stickiness, perfect information
-2. **No money explicitly**: Money is implicit in wealth/capital
-3. **No banking sector**: No fractional reserve, no credit creation
-4. **No international trade**: Closed economy
-5. **Homogeneous agents**: All consumers/firms similar (could add heterogeneity)
-6. **Deterministic (mostly)**: Random matching but predictable behavior
-
-## Future Enhancements
-
-### High Priority
-- [ ] Add scenario presets to dashboard dropdown
-- [ ] Export simulation data to CSV
-- [ ] Simple ML prediction overlay (ARIMA)
-- [ ] Parameter calibration from World Bank data
-
-### Medium Priority
-- [ ] Banking sector with credit creation
-- [ ] Heterogeneous agents (different skills, productivities)
-- [ ] International trade (import/export)
-- [ ] More sophisticated price/wage dynamics
-
-### Low Priority
-- [ ] Multi-player mode (different users control policies)
-- [ ] Historical scenario replay (2008, 2020, etc.)
-- [ ] Agent genealogy visualization
-- [ ] Sound effects for crises
+```python
+# In metrics.py
+def get_capacity_utilization(self, firms):
+    total_capacity = sum(f.capital for f in firms)
+    total_production = sum(f.production for f in firms)
+    return total_production / max(total_capacity, 1)
+```
 
 ## Testing
 
-### Unit Tests (Future)
-- Test individual agent behaviors
-- Test market clearing algorithms
-- Test metrics calculations
-
-### Integration Tests
-- `test_simulation.py`: Basic end-to-end test
-- Verify simulation runs without crashes
-- Check metrics are reasonable ranges
-
 ### Manual Testing Checklist
-- [ ] Start simulation runs smoothly
-- [ ] All sliders update policies
-- [ ] Charts update in real-time
-- [ ] Reset clears history
-- [ ] Crisis buttons trigger events
-- [ ] Auto-policy adjusts rates
 
-### Demo Script
-1. "This simulates a real economy with autonomous agents"
-2. Show baseline → Adjust tax → Watch impact
-3. Trigger recession → Implement response → Show recovery
-4. "Use cases: Policy testing, business strategy, education"
+- [ ] All 4 pages load without errors
+- [ ] Policy sliders update simulation
+- [ ] Charts update in real-time
+- [ ] Reset button works
+- [ ] Scenario buttons trigger correct shocks
+- [ ] News page fetches and displays articles
+- [ ] AI analysis appears (or fallback)
+- [ ] Validation shows actual data
+- [ ] Trade page simulates properly
+- [ ] FX intervention activates
+- [ ] Calibration loads correctly
+
+### Known Limitations
+
+1. **Production Scaling**: Firm production doesn't scale with GDP growth due to labor constraints
+2. **Trade Balance**: May be structurally imbalanced in long simulations
+3. **Calibration Accuracy**: ML fits capture trends, not exact values
+4. **AI Dependency**: Some features require Azure OpenAI access
+5. **Agent Homogeneity**: All consumers/firms have similar parameters
+
+## Technology Stack
+
+**Core**:
+- Python 3.8+
+- Mesa (agent-based modeling)
+- NumPy, Pandas
+
+**Web**:
+- Plotly Dash
+- Dash Bootstrap Components
+
+**Data**:
+- wbgapi (World Bank)
+- requests (NewsAPI)
+
+**AI/ML**:
+- scikit-learn (calibration)
+- Azure OpenAI (analysis, narratives)
+
+**Development**:
+- Git (version control)
+- dotenv (environment management)
+
+## References
+
+**Economic Theory**:
+- Mankiw, N. Gregory. *Principles of Macroeconomics*
+- Blanchard, O. *Macroeconomics*
+
+**Agent-Based Modeling**:
+- Mesa Documentation: https://mesa.readthedocs.io
+
+**APIs**:
+- World Bank API: https://datahelpdesk.worldbank.org/knowledgebase/topics/125589
+- NewsAPI: https://newsapi.org/docs
+- Azure OpenAI: https://learn.microsoft.com/azure/ai-services/openai/
+
+---
+
+For more details, see:
+- [README.md](README.md) - Project overview
+- [QUICKSTART.md](QUICKSTART.md) - Setup guide
+- [INTERNATIONAL_TRADE.md](INTERNATIONAL_TRADE.md) - Trade model documentation
+- [NEWS_INSIGHTS_README.md](NEWS_INSIGHTS_README.md) - AI features guide
