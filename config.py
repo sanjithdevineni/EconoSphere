@@ -79,6 +79,8 @@ CALIBRATION_FILE = os.environ.get(
 CALIBRATION_SOURCE = None
 CALIBRATED_UNEMPLOYMENT_RATE = None
 CALIBRATED_GDP_PER_CAPITA = None
+CALIBRATED_PARAMETERS = None
+CALIBRATION_DIAGNOSTICS = None
 
 _calibration_path = Path(CALIBRATION_FILE)
 if _calibration_path.exists():
@@ -106,5 +108,9 @@ if _calibration_path.exists():
         )
         CALIBRATED_UNEMPLOYMENT_RATE = calibration_params.get("unemployment_rate")
         CALIBRATED_GDP_PER_CAPITA = calibration_params.get("gdp_per_capita")
+        CALIBRATED_PARAMETERS = dict(calibration_params)
+        CALIBRATION_DIAGNOSTICS = calibration_payload.get("diagnostics", {}) or {}
     except (OSError, ValueError, json.JSONDecodeError):
         CALIBRATION_SOURCE = {"error": "failed_to_load", "path": str(_calibration_path)}
+        CALIBRATED_PARAMETERS = None
+        CALIBRATION_DIAGNOSTICS = None
