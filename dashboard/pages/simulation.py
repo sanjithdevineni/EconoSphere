@@ -11,6 +11,7 @@ from urllib.parse import urlparse, parse_qs
 
 from simulation.economy_model import EconomyModel
 import config
+from dashboard.app import calibration_banner, calibration_snapshot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +32,13 @@ def layout(**kwargs):
                 html.H2("Economic Simulation", className="text-center mb-3 mt-3"),
                 html.P(
                     "Agent-based economic simulation with real-time policy controls",
-                    className="text-center text-muted mb-4"
+                    className="text-center text-muted mb-2"
+                ),
+                dbc.Alert(
+                    calibration_banner(),
+                    color="info",
+                    className="text-center mx-auto",
+                    dismissable=False,
                 )
             ])
         ]),
@@ -139,7 +146,8 @@ def layout(**kwargs):
                 dbc.Card([
                     dbc.CardHeader(html.H4("Current Snapshot")),
                     dbc.CardBody([
-                        html.Div(id='current-metrics', className="row")
+                        html.Div(id='current-metrics', className="row gy-2"),
+                        calibration_snapshot()
                     ])
                 ])
             ])
