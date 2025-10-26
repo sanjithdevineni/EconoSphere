@@ -32,7 +32,7 @@ INITIAL_GOVT_SPENDING = 3000
 INITIAL_INTEREST_RATE = 0.05  # 5%
 
 # Demo & AI Features
-ENABLE_AI_NARRATIVE = False  # Disabled - use manual "AI Insights" button instead
+ENABLE_AI_NARRATIVE = True  # Disabled - use manual "AI Insights" button instead
 NARRATIVE_COOLDOWN_STEPS = 2  # Steps to emit AI headlines after a trigger
 
 INFLATION_TARGET = 0.02  # 2%
