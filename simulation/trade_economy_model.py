@@ -128,9 +128,13 @@ class TradeEconomyModel(EconomyModel):
             Dict with aggregate trade statistics
         """
         # Get domestic economy state
-        avg_price = self.metrics.current_price_level or config.INITIAL_PRICE_LEVEL
+        # Use latest metrics if available, otherwise use initial values
+        if self.metrics.latest_metrics:
+            avg_price = self.metrics.latest_metrics.get('avg_price', config.INITIAL_PRICE_LEVEL)
+        else:
+            avg_price = config.INITIAL_PRICE_LEVEL
         total_consumption_demand = sum(c.wealth * config.CONSUMER_WEALTH_SPEND_RATE for c in self.consumers)
-        total_production = sum(f.last_production for f in self.firms) if self.firms else 1000
+        total_production = sum(f.production for f in self.firms) if self.firms else 1000
 
         # Track aggregates
         total_imports = 0.0
@@ -165,7 +169,10 @@ class TradeEconomyModel(EconomyModel):
             foreign_sector.update_retaliation(self.tariff_rate)
 
             # Update exchange rates
-            domestic_inflation = self.metrics.inflation_rate or 0.02
+            if self.metrics.latest_metrics and len(self.metrics.history['inflation']) > 1:
+                domestic_inflation = self.metrics.history['inflation'][-1]
+            else:
+                domestic_inflation = 0.02
             foreign_sector.update_exchange_rate(
                 domestic_inflation=domestic_inflation,
                 domestic_interest_rate=self.central_bank.interest_rate
@@ -178,7 +185,10 @@ class TradeEconomyModel(EconomyModel):
         trade_balance = total_export_value - total_import_value
 
         # Net exports as % of GDP
-        current_gdp = self.metrics.current_gdp or 1.0
+        if self.metrics.latest_metrics:
+            current_gdp = self.metrics.latest_metrics.get('gdp', 1.0)
+        else:
+            current_gdp = 1.0
         net_exports_pct_gdp = (trade_balance / current_gdp * 100) if current_gdp > 0 else 0
 
         return {
@@ -219,8 +229,8 @@ class TradeEconomyModel(EconomyModel):
         # Store for metrics (can be used in inflation calculations)
         self.metrics.net_trade_quantity = net_trade_effect
 
-    def _user_step(self):
-        """Override to add trade flows before parent step"""
+    def step(self):
+        """Override step to add trade flows"""
 
         # Calculate trade flows before main economy step
         trade_flows = self._calculate_trade_flows()
@@ -228,8 +238,8 @@ class TradeEconomyModel(EconomyModel):
         # Integrate trade into economy
         self._integrate_trade_into_economy(trade_flows)
 
-        # Run parent economy step
-        result = super()._user_step()
+        # Run parent economy step (this calls the wrapped _user_step)
+        result = super().step()
 
         # Record trade metrics
         self.trade_history['total_imports'].append(trade_flows['total_import_value'])
