@@ -8,11 +8,13 @@ from pathlib import Path
 
 import dash
 from dash import dcc, html, Input, Output, State, callback
+from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 import dash_bootstrap_components as dbc
 from urllib.parse import urlparse, parse_qs
 
 from simulation.economy_model import EconomyModel
+from simulation.policy_optimizer import recommend_policy
 import config
 from dashboard.app import calibration_banner, calibration_snapshot
 
@@ -213,7 +215,34 @@ def layout(**kwargs):
                         html.Div(id='calibration-panel', children=calibration_snapshot())
                     ])
                 ])
-            ])
+            ], md=8),
+            dbc.Col([
+                dbc.Card([
+                    dbc.CardHeader(html.H4("AI Policy Advisor")),
+                    dbc.CardBody([
+                        html.P(
+                            "Set your macro targets and let the advisor search for policy settings that meet them.",
+                            className="text-muted"
+                        ),
+                        dbc.Row([
+                            dbc.Col([
+                                dbc.Label("GDP target (≥)") ,
+                                dbc.Input(id='target-gdp', type='number', value=20000, min=0, step=500)
+                            ], width=4),
+                            dbc.Col([
+                                dbc.Label("Unemployment target (≤)") ,
+                                dbc.Input(id='target-unemployment', type='number', value=6.0, min=0, step=0.1)
+                            ], width=4),
+                            dbc.Col([
+                                dbc.Label("Inflation target (≤)") ,
+                                dbc.Input(id='target-inflation', type='number', value=3.0, min=-5, step=0.1)
+                            ], width=4),
+                        ], className="g-2"),
+                        dbc.Button("Optimize Policies", id='policy-optimize-btn', color='primary', className='mt-3'),
+                        dbc.Spinner(html.Div(id='policy-advisor-output', className='mt-3'), size='sm', color='primary')
+                    ])
+                ])
+            ], md=4)
         ]),
 
         # AI Narrative Section
@@ -242,6 +271,7 @@ def layout(**kwargs):
             disabled=True
         ),
         dcc.Store(id='simulation-state', data={'running': False, 'step': 0}),
+        dcc.Store(id='policy-advisor-policy', data=None),
         dcc.Location(id='url', refresh=False)
 
     ], fluid=True)
@@ -253,15 +283,27 @@ def layout(**kwargs):
     Output('welfare-slider', 'value'),
     Output('govt-spending-slider', 'value'),
     Input('url', 'search'),
+    Input('policy-advisor-policy', 'data'),
     prevent_initial_call=False
 )
-def update_sliders_from_url(search):
+def update_sliders_from_url(search, advisor_policy):
     """Update slider values from URL parameters"""
     # Default values
     tax_rate = config.INITIAL_VAT_RATE * 100
     interest_rate = config.INITIAL_INTEREST_RATE * 100
     welfare = config.INITIAL_WELFARE_PAYMENT
     govt_spending = config.INITIAL_GOVT_SPENDING
+
+    ctx = dash.callback_context
+    if ctx.triggered and ctx.triggered[0]['prop_id'].startswith('policy-advisor-policy'):
+        if advisor_policy:
+            return (
+                max(0.0, min(50.0, advisor_policy.get('tax_rate', tax_rate))),
+                max(0.0, min(10.0, advisor_policy.get('interest_rate', interest_rate))),
+                max(0.0, min(2000.0, advisor_policy.get('welfare', welfare))),
+                max(0.0, min(50000.0, advisor_policy.get('govt_spending', govt_spending))),
+            )
+        return tax_rate, interest_rate, welfare, govt_spending
 
     if search:
         # Parse query parameters
@@ -513,4 +555,106 @@ def update_simulation(n, tax_rate, interest_rate, welfare, govt_spending, auto_p
     counter_text = f"(Callback #{n} | Step {simulation.current_step} | History: {len(narrative_history)} items)"
 
     LOGGER.info(f"Callback returning: narrative_display type={type(narrative_display)}, counter={counter_text}")
-    return gdp_fig, unemployment_fig, inflation_fig, inequality_fig, metrics_display, narrative_display, counter_text
+    return (
+        gdp_fig,
+        unemployment_fig,
+        inflation_fig,
+        inequality_fig,
+        metrics_display,
+        narrative_display,
+        counter_text,
+    )
+
+
+@callback(
+    Output('policy-advisor-output', 'children'),
+    Output('policy-advisor-policy', 'data'),
+    Input('policy-optimize-btn', 'n_clicks'),
+    State('target-gdp', 'value'),
+    State('target-unemployment', 'value'),
+    State('target-inflation', 'value'),
+    prevent_initial_call=True
+)
+def run_policy_optimizer(n_clicks, target_gdp, target_unemployment, target_inflation):
+    if not n_clicks:
+        raise PreventUpdate
+
+    try:
+        recommendation = recommend_policy(
+            target_gdp=float(target_gdp or 0),
+            target_unemployment=float(target_unemployment or 0),
+            target_inflation=float(target_inflation or 0),
+        )
+    except Exception as exc:  # noqa: BLE001
+        LOGGER.warning("Policy optimization failed: %s", exc, exc_info=True)
+        return (
+            dbc.Alert(
+                "Unable to compute a recommendation right now. Please try again.",
+                color='danger'
+            ),
+            None,
+        )
+
+    policy = recommendation.policy
+    predicted = recommendation.predicted
+
+    policy_items = dbc.ListGroup([
+        dbc.ListGroupItem([
+            html.Span("Tax rate"),
+            html.Span(f"{policy['tax_rate'] * 100:.1f}%", className='fw-semibold')
+        ], className="d-flex justify-content-between"),
+        dbc.ListGroupItem([
+            html.Span("Interest rate"),
+            html.Span(f"{policy['interest_rate'] * 100:.1f}%", className='fw-semibold')
+        ], className="d-flex justify-content-between"),
+        dbc.ListGroupItem([
+            html.Span("Welfare payment"),
+            html.Span(f"${policy['welfare']:.0f}", className='fw-semibold')
+        ], className="d-flex justify-content-between"),
+        dbc.ListGroupItem([
+            html.Span("Govt spending"),
+            html.Span(f"${policy['govt_spending']:.0f}", className='fw-semibold')
+        ], className="d-flex justify-content-between"),
+    ], flush=True)
+
+    predicted = recommendation.predicted
+    actual = recommendation.actual
+    predicted_metrics = html.Div([
+        html.P(
+            f"Surrogate prediction: GDP ${predicted['gdp']:,.0f}, unemployment {predicted['unemployment']:.2f}%, "
+            f"inflation {predicted['inflation']:.2f}%.",
+            className='mb-1'
+        ),
+        html.P(
+            f"Simulated outcome: GDP ${actual['gdp']:,.0f}, unemployment {actual['unemployment']:.2f}%, "
+            f"inflation {actual['inflation']:.2f}%.",
+            className='mb-2 text-primary'
+        ),
+        html.Small(
+            f"Trained on {recommendation.samples_used} simulated policy scenarios.",
+            className='text-muted'
+        )
+    ])
+
+    note = html.Small(recommendation.notes, className='text-warning') if recommendation.notes else None
+
+    tax_slider = max(0.0, min(50.0, policy['tax_rate'] * 100))
+    interest_slider = max(0.0, min(10.0, policy['interest_rate'] * 100))
+    welfare_slider = max(0.0, min(2000.0, policy['welfare']))
+    spending_slider = max(0.0, min(50000.0, policy['govt_spending']))
+
+    return (
+        [
+            html.H5("Recommended settings", className='mb-2'),
+            policy_items,
+            html.Hr(),
+            predicted_metrics,
+            note,
+        ],
+        {
+            'tax_rate': tax_slider,
+            'interest_rate': interest_slider,
+            'welfare': welfare_slider,
+            'govt_spending': spending_slider,
+        }
+    )
