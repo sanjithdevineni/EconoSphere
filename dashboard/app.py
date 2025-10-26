@@ -34,6 +34,7 @@ def create_layout():
                 dbc.NavItem(dbc.NavLink("Simulation", href="/")),
                 dbc.NavItem(dbc.NavLink("Validation", href="/validation")),
                 dbc.NavItem(dbc.NavLink("News Insights", href="/news")),
+                dbc.NavItem(dbc.NavLink("🌍 International Trade", href="/trade")),
             ],
             brand="EconoSphere - Macroeconomic Simulator",
             brand_href="/",

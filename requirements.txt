@@ -17,3 +17,16 @@ scikit-learn>=1.3.0
 
 # Utilities
 python-dotenv>=1.0.0
+
+
+# Tier 2 (Medium):
+#   - Add foreign sector agent
+#   - Track import/export flows
+#   - Model domestic vs import substitution
+#   - Show trade balance charts
+
+#   Tier 3 (Advanced):
+#   - Multi-country model
+#   - Retaliation effects
+#   - Terms of trade dynamics
+#   - Currency exchange rates

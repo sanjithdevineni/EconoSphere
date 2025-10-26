@@ -78,7 +78,7 @@ CONTENT: {article.content or article.description}
 
 Provide analysis in this exact JSON format:
 {{
-    "policy_type": "monetary" or "fiscal" or "mixed" or "indicator",
+    "policy_type": "monetary" or "fiscal" or "trade" or "mixed" or "indicator",
     "sentiment": number between -1.0 (very contractionary) to +1.0 (very expansionary),
     "impact": {{
         "gdp_growth": "positive/negative/neutral",
@@ -89,7 +89,8 @@ Provide analysis in this exact JSON format:
         "interest_rate": number or null (range 0-10, as percentage),
         "govt_spending": number or null (range 0-50000),
         "welfare_payment": number or null (range 0-2000),
-        "tax_rate": number or null (range 0-50, as percentage)
+        "tax_rate": number or null (range 0-50, as percentage),
+        "tariff_rate": number or null (range 0-100, as percentage)
     }},
     "summary": "One sentence summary of policy impact (max 100 words)",
     "confidence": number between 0-1 indicating analysis confidence
@@ -99,6 +100,7 @@ Be specific about parameter values. If the news mentions:
 - Interest rate changes: suggest exact rate
 - Government spending: scale to simulation ($0-50k range)
 - Tax changes: suggest tax rate percentage
+- Tariffs/trade policy: suggest tariff rate percentage (0-100%)
 - If no specific policy change, use null for suggested_params
 
 Return ONLY valid JSON, no other text."""
@@ -169,7 +171,9 @@ Return ONLY valid JSON, no other text."""
 
         # Detect policy type
         policy_type = "indicator"
-        if any(word in text for word in ["interest rate", "fed", "federal reserve", "monetary"]):
+        if any(word in text for word in ["tariff", "trade war", "import", "export", "trade"]):
+            policy_type = "trade"
+        elif any(word in text for word in ["interest rate", "fed", "federal reserve", "monetary"]):
             policy_type = "monetary"
         elif any(word in text for word in ["spending", "tax", "fiscal", "budget"]):
             policy_type = "fiscal"
@@ -186,8 +190,25 @@ Return ONLY valid JSON, no other text."""
             "interest_rate": None,
             "govt_spending": None,
             "welfare_payment": None,
-            "tax_rate": None
+            "tax_rate": None,
+            "tariff_rate": None
         }
+
+        # Tariff detection
+        if "tariff" in text:
+            # Try to extract percentage
+            import re
+            tariff_match = re.search(r'(\d+)%?\s*tariff', text)
+            if tariff_match:
+                suggested_params["tariff_rate"] = float(tariff_match.group(1))
+            elif "impose" in text or "implement" in text or "raise" in text:
+                suggested_params["tariff_rate"] = 25.0  # Default tariff
+            elif "remove" in text or "eliminate" in text:
+                suggested_params["tariff_rate"] = 0.0
+
+        # Trade war detection
+        if "trade war" in text:
+            suggested_params["tariff_rate"] = 50.0  # High tariffs for trade war
 
         if "interest rate" in text or "fed" in text:
             if "raise" in text or "hike" in text:

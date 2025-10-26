@@ -185,6 +185,7 @@ def display_news(articles):
         policy_colors = {
             'monetary': 'primary',
             'fiscal': 'info',
+            'trade': 'warning',
             'mixed': 'secondary',
             'indicator': 'light'
         }
@@ -196,6 +197,8 @@ def display_news(articles):
 
         # Build parameter changes text
         param_changes = []
+        if suggested_params.get('tariff_rate') is not None:
+            param_changes.append(f"Tariff Rate → {suggested_params['tariff_rate']}%")
         if suggested_params.get('interest_rate') is not None:
             param_changes.append(f"Interest Rate → {suggested_params['interest_rate']}%")
         if suggested_params.get('govt_spending') is not None:
@@ -361,7 +364,13 @@ def handle_simulate_click(simulate_clicks, close_clicks, articles, is_open):
         suggested_params = analysis['suggested_params']
 
         # Build URL with query parameters
+        # If tariff_rate is present, direct to trade page; otherwise simulation page
         url_params = []
+        has_tariff = suggested_params.get('tariff_rate') is not None
+
+        if has_tariff:
+            url_params.append(f"tariff_rate={suggested_params['tariff_rate']}")
+
         if suggested_params.get('interest_rate') is not None:
             url_params.append(f"interest_rate={suggested_params['interest_rate']}")
         if suggested_params.get('govt_spending') is not None:
@@ -371,7 +380,9 @@ def handle_simulate_click(simulate_clicks, close_clicks, articles, is_open):
         if suggested_params.get('welfare_payment') is not None:
             url_params.append(f"welfare={suggested_params['welfare_payment']}")
 
-        simulation_url = "/?" + "&".join(url_params) if url_params else "/"
+        # Route to trade page if tariff policy, else simulation page
+        base_page = "/trade" if has_tariff else "/"
+        simulation_url = base_page + ("?" + "&".join(url_params) if url_params else "")
 
         # Build scenario details
         modal_content = [
@@ -394,6 +405,17 @@ def handle_simulate_click(simulate_clicks, close_clicks, articles, is_open):
 
         # Parameter cards
         param_cards = []
+
+        if suggested_params.get('tariff_rate') is not None:
+            param_cards.append(
+                dbc.Card([
+                    dbc.CardBody([
+                        html.H5("Tariff Rate", className="card-title"),
+                        html.H3(f"{suggested_params['tariff_rate']}%", className="text-warning"),
+                        html.Small("Set the Tariff Rate slider to this value on the Trade page", className="text-muted")
+                    ])
+                ], className="mb-2")
+            )
 
         if suggested_params.get('interest_rate') is not None:
             param_cards.append(
