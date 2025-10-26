@@ -138,7 +138,7 @@ class TradeEconomyModel(EconomyModel):
 
         # Track aggregates
         total_imports = 0.0
-        total_import_value = 0.0
+        total_import_value_pretariff = 0.0  # For trade balance (excludes tariffs)
         total_tariff_revenue = 0.0
         total_exports = 0.0
         total_export_value = 0.0
@@ -153,7 +153,7 @@ class TradeEconomyModel(EconomyModel):
             )
 
             total_imports += import_result['import_quantity']
-            total_import_value += import_result['import_value']
+            total_import_value_pretariff += import_result['import_value_pretariff']  # Use pre-tariff value
             total_tariff_revenue += import_result['tariff_revenue']
 
             # Calculate exports to this country
@@ -181,8 +181,9 @@ class TradeEconomyModel(EconomyModel):
             # Step foreign economy forward
             foreign_sector.step()
 
-        # Calculate trade balance (exports - imports)
-        trade_balance = total_export_value - total_import_value
+        # Calculate trade balance (exports - imports, using pre-tariff import value)
+        # Tariffs are domestic tax revenue, not part of trade balance
+        trade_balance = total_export_value - total_import_value_pretariff
 
         # Net exports as % of GDP
         if self.metrics.latest_metrics:
@@ -193,7 +194,7 @@ class TradeEconomyModel(EconomyModel):
 
         return {
             'total_imports': total_imports,
-            'total_import_value': total_import_value,
+            'total_import_value': total_import_value_pretariff,  # Pre-tariff value for trade balance
             'total_exports': total_exports,
             'total_export_value': total_export_value,
             'trade_balance': trade_balance,
@@ -289,18 +290,22 @@ class TradeEconomyModel(EconomyModel):
         """
         Trigger a trade war scenario
 
+        Foreign countries will retaliate gradually based on their retaliation_sensitivity.
+        The retaliation will converge to: domestic_tariff × retaliation_sensitivity
+
         Args:
             intensity: How severe (0.0 to 1.0)
         """
-        # Domestic imposes high tariffs
+        # Domestic imposes high tariffs immediately (policy decision)
         self.set_tariff_rate(0.25 * intensity)  # Up to 25% tariffs
 
-        # All countries retaliate immediately
+        # Increase retaliation sensitivity (countries become more aggressive)
+        # Foreign tariffs will converge gradually via update_retaliation()
         for foreign_sector in self.foreign_sectors.values():
-            foreign_sector.tariff_rate_on_imports = 0.20 * intensity
             foreign_sector.retaliation_sensitivity = min(1.0, foreign_sector.retaliation_sensitivity + 0.2)
 
-        LOGGER.info(f"Trade war triggered with intensity {intensity:.1%}")
+        LOGGER.info(f"Trade war triggered with intensity {intensity:.1%}. "
+                   f"Foreign retaliation will converge gradually.")
 
     def trigger_free_trade_agreement(self, country_name: str) -> None:
         """

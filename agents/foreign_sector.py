@@ -191,23 +191,23 @@ class ForeignSector:
             foreign_interest_rate = 0.03  # Default 3%
 
         # Interest rate parity effect
-        # Higher domestic rates → stronger domestic currency → lower exchange rate
+        # Higher domestic rates → stronger domestic currency → HIGHER exchange rate (more FC per DC)
         interest_differential = domestic_interest_rate - foreign_interest_rate
 
         # Purchasing power parity effect
-        # Higher domestic inflation → weaker domestic currency → higher exchange rate
+        # Higher domestic inflation → weaker domestic currency → LOWER exchange rate (less FC per DC)
         inflation_differential = domestic_inflation - self.inflation_rate
 
         # Trade balance effect (simplified)
-        # Trade surplus → stronger domestic currency
+        # Trade surplus (exports > imports from domestic perspective) → stronger domestic currency → HIGHER E
         trade_balance_domestic = (self.imports_from_domestic - self.exports_to_domestic)
         trade_balance_effect = trade_balance_domestic / max(self.gdp, 1.0) * 0.1
 
-        # Combined effect
+        # Combined effect (CORRECTED SIGNS)
         exchange_rate_change = (
-            inflation_differential * 0.5 +  # PPP effect
-            -interest_differential * 0.3 +  # Interest rate effect
-            -trade_balance_effect  # Trade balance effect
+            -inflation_differential * 0.5 +  # PPP effect: higher inflation → lower E
+            +interest_differential * 0.3 +   # Interest rate effect: higher rates → higher E
+            +trade_balance_effect            # Trade balance: surplus → higher E
         )
 
         # Add some random noise
