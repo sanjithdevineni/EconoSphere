@@ -2,6 +2,8 @@
 numpy>=1.24.0
 pandas>=2.0.0
 mesa>=2.1.0
+openai
+gunicorn
 
 # Dashboard
 dash>=2.14.0
